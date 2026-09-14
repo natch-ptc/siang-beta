@@ -18,7 +18,13 @@ import {
   IMAGE_ICON,
   VIDEO_ICON,
   TEXT_ICON,
+  LINK_ICON,
+  KEBAB_ICON,
+  DOWNLOAD_ICON,
+  SHARE_GLYPH,
+  QR_GLYPH,
 } from "@/lib/icons";
+import { QRCodeCanvas } from "qrcode.react";
 import { slugify } from "@/lib/slug";
 
 export type StudioArtist = {
@@ -34,6 +40,8 @@ export type StudioArtist = {
 
 export type StudioArtwork = {
   id: string;
+  slug: string;
+  code: string;
   title: string;
   duration_sec: number | null;
   description: string | null;
@@ -95,6 +103,8 @@ export default function StudioClient({
 }) {
   const router = useRouter();
   const supabase = createClient();
+  const [composing, setComposing] = useState(false);
+  const [addingExhibition, setAddingExhibition] = useState(false);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -120,9 +130,16 @@ export default function StudioClient({
         <CreateProfile />
       ) : (
         <>
-          <ProfileEditor artist={artist} contacts={contacts} />
-          <WorksSection artistId={artist.id} artistSlug={artist.slug} works={works} shows={shows} />
-          <ExhibitionsSection artistId={artist.id} works={works} shows={shows} />
+          <ProfileEditor artist={artist} contacts={contacts} onUpload={() => setComposing(true)} onNewExhibition={() => setAddingExhibition(true)} />
+          <WorksSection
+            artistId={artist.id}
+            artistSlug={artist.slug}
+            works={works}
+            shows={shows}
+            composing={composing}
+            setComposing={setComposing}
+          />
+          <ExhibitionsSection artistId={artist.id} works={works} shows={shows} adding={addingExhibition} setAdding={setAddingExhibition} />
         </>
       )}
     </main>
@@ -210,13 +227,47 @@ function contactValue(contacts: StudioContact[], kind: StudioContact["kind"]) {
   return contacts.find((c) => c.kind === kind)?.value ?? "";
 }
 
-function ProfileEditor({ artist, contacts }: { artist: StudioArtist; contacts: StudioContact[] }) {
+function ProfileEditor({
+  artist,
+  contacts,
+  onUpload,
+  onNewExhibition,
+}: {
+  artist: StudioArtist;
+  contacts: StudioContact[];
+  onUpload: () => void;
+  onNewExhibition: () => void;
+}) {
   const router = useRouter();
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(artist.avatar_url);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(`https://siang.co/${artist.slug}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // clipboard API unavailable — nothing to fall back to here
+    }
+  }
+
+  async function shareLink() {
+    const url = `https://siang.co/${artist.slug}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: artist.name, url });
+      } catch {
+        // user cancelled the native share sheet
+      }
+    } else {
+      copyLink();
+    }
+  }
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(artist.name);
@@ -319,6 +370,35 @@ function ProfileEditor({ artist, contacts }: { artist: StudioArtist; contacts: S
       </div>
       {uploadError && <p style={styles.error}>{uploadError}</p>}
 
+      <p style={styles.hint}>One link for your Instagram bio. Everything you publish appears there.</p>
+      <div style={styles.pillRow}>
+        <button style={styles.pillDk} onClick={copyLink} type="button">
+          {LINK_ICON} {copied ? "Copied" : "Copy link"}
+        </button>
+        <Link href="/" style={styles.pillDk}>
+          View your page
+        </Link>
+        <button style={styles.pillDk} onClick={shareLink} type="button">
+          {SHARE_GLYPH} Share
+        </button>
+      </div>
+      <div style={styles.makeGrid}>
+        <button style={styles.makePink} onClick={onUpload} type="button">
+          <span>{ADD_ICON}</span>
+          <span>
+            <span style={styles.makeTitle}>Upload a work</span>
+            <span style={styles.makeSub}>Sound, text, images and video</span>
+          </span>
+        </button>
+        <button style={styles.make} onClick={onNewExhibition} type="button">
+          <span>{IMAGE_ICON}</span>
+          <span>
+            <span style={styles.makeTitle}>New exhibition</span>
+            <span style={styles.makeSub}>Group works for one show</span>
+          </span>
+        </button>
+      </div>
+
       {!editing ? (
         <>
           {artist.bio && <p style={{ ...styles.sub, marginTop: 14, color: "rgba(255,255,255,.86)" }}>{artist.bio}</p>}
@@ -392,16 +472,19 @@ function WorksSection({
   artistSlug,
   works,
   shows,
+  composing,
+  setComposing,
 }: {
   artistId: string;
   artistSlug: string;
   works: StudioArtwork[];
   shows: StudioExhibition[];
+  composing: boolean;
+  setComposing: (v: boolean) => void;
 }) {
   const router = useRouter();
   const supabase = createClient();
   const [rows, setRows] = useState(works);
-  const [composing, setComposing] = useState(false);
 
   async function addWork(fields: {
     title: string;
@@ -425,7 +508,7 @@ function WorksSection({
         audio_url: fields.audioUrl,
         sort_order: rows.length,
       })
-      .select("id, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order")
+      .select("id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order")
       .single();
     if (error || !data) return { error: error?.message ?? "Could not publish the work." };
 
@@ -452,17 +535,15 @@ function WorksSection({
   return (
     <section style={styles.card}>
       <div style={styles.worksHead}>
-        <h2 style={styles.h2}>Works ({rows.length})</h2>
-        <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setComposing(true)}>
-          {ADD_ICON} Add work
-        </button>
+        <h2 style={styles.h2}>Works</h2>
+        <span style={styles.composerSecLabel}>{rows.length} work{rows.length === 1 ? "" : "s"}</span>
       </div>
 
       {composing && <WorkComposer artistSlug={artistSlug} shows={shows} onClose={() => setComposing(false)} onSubmit={addWork} />}
 
       <div style={styles.workList}>
         {rows.map((w) => (
-          <WorkRow key={w.id} work={w} onUpdate={updateWork} onDelete={deleteWork} />
+          <WorkRow key={w.id} work={w} artistSlug={artistSlug} onUpdate={updateWork} onDelete={deleteWork} />
         ))}
         {rows.length === 0 && !composing && <p style={styles.empty}>No works yet.</p>}
       </div>
@@ -715,12 +796,60 @@ function WorkComposer({
   );
 }
 
+function formatCode(code: string) {
+  return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
+}
+
+function WorkQRSheet({ artistSlug, work, onClose }: { artistSlug: string; work: StudioArtwork; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const url = `https://siang.co/${artistSlug}/${work.slug}`;
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // clipboard API unavailable — nothing to fall back to here
+    }
+  }
+
+  function downloadQR() {
+    const canvas = document.getElementById(`work-qr-${work.id}`) as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.download = `${work.slug}-qr.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  }
+
+  return (
+    <Sheet title={work.title} onClose={onClose}>
+      <p style={{ ...styles.sub, marginTop: -8, marginBottom: 16 }}>Scan to hear this work</p>
+      <div style={styles.qrWrap}>
+        <QRCodeCanvas id={`work-qr-${work.id}`} value={url} size={200} includeMargin />
+      </div>
+      <p style={styles.qrCodeText}>{formatCode(work.code)}</p>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button style={{ ...styles.saveSm, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={copyLink} type="button">
+          {LINK_ICON} {copied ? "Copied" : "Copy link"}
+        </button>
+        <button style={{ ...styles.rowBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={downloadQR} type="button">
+          {DOWNLOAD_ICON} Download QR
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
 function WorkRow({
   work,
+  artistSlug,
   onUpdate,
   onDelete,
 }: {
   work: StudioArtwork;
+  artistSlug: string;
   onUpdate: (id: string, fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url">>) => void;
   onDelete: (id: string) => void;
 }) {
@@ -731,6 +860,8 @@ function WorkRow({
   const [description, setDescription] = useState(work.description ?? "");
   const [duration, setDuration] = useState(work.duration_sec ? clock(work.duration_sec) : "");
   const [uploading, setUploading] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   async function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -766,12 +897,42 @@ function WorkRow({
             {work.duration_sec ? clock(work.duration_sec) : "—"} · {work.listen_count.toLocaleString()} listens
           </span>
         </div>
-        <button style={{ ...styles.rowBtn, display: "inline-flex", alignItems: "center", gap: 5 }} onClick={() => setEditing(true)}>
-          {EDIT_ICON} Edit
+        <button style={styles.qrBtn} onClick={() => setShowQR(true)} aria-label={`Share or print the code for ${work.title}`} type="button">
+          {QR_GLYPH}
         </button>
-        <button style={{ ...styles.rowBtnDanger, display: "inline-flex", alignItems: "center", gap: 5 }} onClick={() => onDelete(work.id)}>
-          {DELETE_ICON} Delete
-        </button>
+        <div style={styles.kebabWrap}>
+          <button style={styles.kebabBtn} onClick={() => setMenuOpen((m) => !m)} aria-label="More options" type="button">
+            {KEBAB_ICON}
+          </button>
+          {menuOpen && (
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 19 }} onClick={() => setMenuOpen(false)} />
+              <div style={styles.kebabMenu}>
+                <button
+                  style={styles.kebabItem}
+                  onClick={() => {
+                    setEditing(true);
+                    setMenuOpen(false);
+                  }}
+                  type="button"
+                >
+                  {EDIT_ICON} Edit
+                </button>
+                <button
+                  style={styles.kebabItemDanger}
+                  onClick={() => {
+                    onDelete(work.id);
+                    setMenuOpen(false);
+                  }}
+                  type="button"
+                >
+                  {DELETE_ICON} Delete
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        {showQR && <WorkQRSheet artistSlug={artistSlug} work={work} onClose={() => setShowQR(false)} />}
       </div>
     );
   }
@@ -804,11 +965,22 @@ function WorkRow({
   );
 }
 
-function ExhibitionsSection({ artistId, works, shows }: { artistId: string; works: StudioArtwork[]; shows: StudioExhibition[] }) {
+function ExhibitionsSection({
+  artistId,
+  works,
+  shows,
+  adding,
+  setAdding,
+}: {
+  artistId: string;
+  works: StudioArtwork[];
+  shows: StudioExhibition[];
+  adding: boolean;
+  setAdding: (v: boolean) => void;
+}) {
   const router = useRouter();
   const supabase = createClient();
   const [rows, setRows] = useState(shows);
-  const [adding, setAdding] = useState(false);
 
   async function createExhibition(title: string, venue: string, year: number, kind: "solo" | "group", workIds: string[]) {
     const { data, error } = await supabase
@@ -848,10 +1020,8 @@ function ExhibitionsSection({ artistId, works, shows }: { artistId: string; work
   return (
     <section style={styles.card}>
       <div style={styles.worksHead}>
-        <h2 style={styles.h2}>Exhibitions ({rows.length})</h2>
-        <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setAdding(true)}>
-          {ADD_ICON} New exhibition
-        </button>
+        <h2 style={styles.h2}>Exhibitions</h2>
+        <span style={styles.composerSecLabel}>{rows.length} show{rows.length === 1 ? "" : "s"}</span>
       </div>
 
       {adding && (
@@ -1398,4 +1568,126 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 6,
   },
+
+  pillRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 },
+  pillDk: {
+    height: 34,
+    padding: "0 14px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.08)",
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    textDecoration: "none",
+  },
+  makeGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 20 },
+  make: {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 22,
+    minHeight: 116,
+    padding: 16,
+    borderRadius: 18,
+    textAlign: "left",
+    color: "#fff",
+    background: "rgba(255,255,255,.08)",
+    border: 0,
+    cursor: "pointer",
+  },
+  makePink: {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 22,
+    minHeight: 116,
+    padding: 16,
+    borderRadius: 18,
+    textAlign: "left",
+    color: "#fff",
+    background: "#B63878",
+    border: 0,
+    cursor: "pointer",
+  },
+  makeTitle: { display: "block", fontSize: 16, fontWeight: 700, letterSpacing: "-0.025em" },
+  makeSub: { display: "block", fontSize: 12.5, lineHeight: 1.35, opacity: 0.72, marginTop: 3 },
+
+  qrBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.08)",
+    color: "#fff",
+    display: "grid",
+    placeItems: "center",
+    cursor: "pointer",
+    flex: "none",
+  },
+  kebabWrap: { position: "relative", flex: "none" },
+  kebabBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.08)",
+    color: "#fff",
+    display: "grid",
+    placeItems: "center",
+    cursor: "pointer",
+  },
+  kebabMenu: {
+    position: "absolute",
+    top: 40,
+    right: 0,
+    background: "#1c1c1e",
+    border: "1px solid rgba(255,255,255,.14)",
+    borderRadius: 12,
+    padding: 6,
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    minWidth: 120,
+    zIndex: 20,
+    boxShadow: "0 12px 30px -10px rgba(0,0,0,.6)",
+  },
+  kebabItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    height: 34,
+    padding: "0 10px",
+    borderRadius: 8,
+    border: 0,
+    background: "none",
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    textAlign: "left",
+  },
+  kebabItemDanger: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    height: 34,
+    padding: "0 10px",
+    borderRadius: 8,
+    border: 0,
+    background: "none",
+    color: "#FF6FA5",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    textAlign: "left",
+  },
+  qrCodeText: { fontSize: 22, fontWeight: 700, letterSpacing: "0.1em", textAlign: "center", margin: "4px 0 18px" },
+  qrWrap: { display: "flex", justifyContent: "center", padding: 16, background: "#fff", borderRadius: 12, marginBottom: 16 },
 };

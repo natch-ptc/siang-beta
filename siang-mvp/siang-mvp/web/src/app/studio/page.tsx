@@ -23,7 +23,7 @@ export default async function StudioPage() {
     const [worksRes, contactsRes, showsRes] = await Promise.all([
       supabase
         .from("artworks")
-        .select("id, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order")
+        .select("id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order")
         .eq("artist_id", artist.id)
         .order("sort_order"),
       supabase.from("artist_contacts").select("kind, value").eq("artist_id", artist.id),
