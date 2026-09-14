@@ -4,7 +4,7 @@ export function stamp(iso: string): string {
   if (!iso) return "";
   const [d, t] = iso.split("T");
   const [y, m, day] = d.split("-");
-  return `${+day} ${MONTHS[+m - 1]} ${y} · ${t}`;
+  return `${+day} ${MONTHS[+m - 1]} ${y} · ${(t ?? "00:00").slice(0, 5)}`;
 }
 
 // "3:12" -> 192
