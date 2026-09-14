@@ -52,7 +52,7 @@ export default function LoginPage() {
   return (
     <main style={styles.page}>
       <div style={styles.card}>
-        <Link href="/" style={styles.back} aria-label="Back to Pocket">
+        <Link href="/mvp" style={styles.back} aria-label="Back to Pocket">
           {BACK_CHEVRON_SVG}
         </Link>
         <h1 style={styles.h1}>{mode === "signin" ? "Sign in" : "Create your studio"}</h1>

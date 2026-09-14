@@ -109,14 +109,14 @@ export default function StudioClient({
 
   async function signOut() {
     await supabase.auth.signOut();
-    router.push("/");
+    router.push("/mvp");
     router.refresh();
   }
 
   return (
     <main style={styles.page}>
       <header style={styles.header}>
-        <Link href="/" style={styles.back} aria-label="Back to Pocket">
+        <Link href="/mvp" style={styles.back} aria-label="Back to Pocket">
           {BACK_CHEVRON_SVG}
         </Link>
         <div style={styles.headerRight}>
@@ -391,7 +391,7 @@ function ProfileEditor({
             <button style={styles.pillDk} onClick={copyLink} type="button">
               {LINK_ICON} {copied ? "Copied" : "Copy link"}
             </button>
-            <Link href="/" style={styles.pillDk}>
+            <Link href="/mvp" style={styles.pillDk}>
               View your page
             </Link>
             <button style={styles.pillDk} onClick={shareLink} type="button">
