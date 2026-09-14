@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { clock, secs } from "@/lib/format";
-import { SIGN_OUT_ICON, EDIT_ICON, DELETE_ICON, ADD_ICON, CHECK_ICON, CAMERA_ICON, BACK_CHEVRON_SVG } from "@/lib/icons";
+import { SIGN_OUT_ICON, EDIT_ICON, DELETE_ICON, ADD_ICON, CAMERA_ICON, BACK_CHEVRON_SVG, CLOSE_GLYPH, MUSIC_ICON } from "@/lib/icons";
 import { slugify } from "@/lib/slug";
 
 export type StudioArtist = {
@@ -26,6 +26,7 @@ export type StudioArtwork = {
   duration_sec: number | null;
   description: string | null;
   cover_url: string | null;
+  audio_url: string | null;
   listen_count: number;
   sort_order: number;
 };
@@ -50,8 +51,9 @@ const BIO_LIMIT = 160;
 
 // Uploads to the shared public "media" bucket under the signed-in user's own
 // folder (storage RLS restricts writes to "{auth.uid()}/..." — see
-// supabase/migrations/0004_storage.sql) and returns the public URL.
-async function uploadPhoto(supabase: SupabaseClient, file: File): Promise<string> {
+// supabase/migrations/0004_storage.sql) and returns the public URL. Used for
+// photos and audio alike; the bucket doesn't care about content type.
+async function uploadFile(supabase: SupabaseClient, file: File): Promise<string> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -107,7 +109,7 @@ export default function StudioClient({
       ) : (
         <>
           <ProfileEditor artist={artist} contacts={contacts} />
-          <WorksSection artistId={artist.id} works={works} />
+          <WorksSection artistId={artist.id} works={works} shows={shows} />
           <ExhibitionsSection artistId={artist.id} works={works} shows={shows} />
         </>
       )}
@@ -224,7 +226,7 @@ function ProfileEditor({ artist, contacts }: { artist: StudioArtist; contacts: S
     setUploading(true);
     setUploadError(null);
     try {
-      const url = await uploadPhoto(supabase, file);
+      const url = await uploadFile(supabase, file);
       await supabase.from("artists").update({ avatar_url: url }).eq("id", artist.id);
       setAvatarUrl(url);
       router.refresh();
@@ -320,88 +322,99 @@ function ProfileEditor({ artist, contacts }: { artist: StudioArtist; contacts: S
           {saved && <span style={{ ...styles.savedTag, display: "block", marginTop: 10 }}>Saved</span>}
         </>
       ) : (
-        <div style={{ ...styles.form, marginTop: 18 }}>
-          <Field label="Name">
-            <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
-          </Field>
-          <p style={styles.hint}>Your link stays siang.co/{artist.slug}, even if you change your name.</p>
-          <div style={styles.row}>
-            <Field label="Discipline">
-              <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
+        <Sheet title="Edit profile" onClose={() => setEditing(false)}>
+          <div style={styles.form}>
+            <Field label="Name">
+              <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
-            <Field label="Based in">
-              <input style={styles.input} value={based} onChange={(e) => setBased(e.target.value)} />
+            <p style={styles.hint}>Your link stays siang.co/{artist.slug}, even if you change your name.</p>
+            <div style={styles.row}>
+              <Field label="Discipline">
+                <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
+              </Field>
+              <Field label="Based in">
+                <input style={styles.input} value={based} onChange={(e) => setBased(e.target.value)} />
+              </Field>
+            </div>
+            <Field label="Country">
+              <input style={styles.input} value={country} onChange={(e) => setCountry(e.target.value)} />
             </Field>
-          </div>
-          <Field label="Country">
-            <input style={styles.input} value={country} onChange={(e) => setCountry(e.target.value)} />
-          </Field>
-          <label style={styles.label}>
-            <span style={{ display: "flex", justifyContent: "space-between" }}>
-              Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
-            </span>
-            <textarea
-              style={styles.textarea}
-              rows={3}
-              maxLength={BIO_LIMIT}
-              value={bio}
-              onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))}
-            />
-          </label>
-          <div style={styles.fldH}>Contact</div>
-          <Field label="Instagram">
-            <input style={styles.input} placeholder="@handle" value={ig} onChange={(e) => setIg(e.target.value)} />
-          </Field>
-          <Field label="LINE ID">
-            <input style={styles.input} value={line} onChange={(e) => setLine(e.target.value)} />
-          </Field>
-          <Field label="Email">
-            <input style={styles.input} type="email" value={emailContact} onChange={(e) => setEmailContact(e.target.value)} />
-          </Field>
-          <Field label="Website">
-            <input style={styles.input} value={web} onChange={(e) => setWeb(e.target.value)} />
-          </Field>
-          {error && <p style={styles.error}>{error}</p>}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={{ ...styles.saveSm, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={save} disabled={busy}>
-              {!busy && CHECK_ICON} {busy ? "Saving..." : "Save profile"}
-            </button>
-            <button style={styles.rowBtn} onClick={() => setEditing(false)}>
-              Cancel
+            <label style={styles.label}>
+              <span style={{ display: "flex", justifyContent: "space-between" }}>
+                Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
+              </span>
+              <textarea
+                style={styles.textarea}
+                rows={3}
+                maxLength={BIO_LIMIT}
+                value={bio}
+                onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))}
+              />
+            </label>
+            <div style={styles.fldH}>Contact</div>
+            <Field label="Instagram">
+              <input style={styles.input} placeholder="@handle" value={ig} onChange={(e) => setIg(e.target.value)} />
+            </Field>
+            <Field label="LINE ID">
+              <input style={styles.input} value={line} onChange={(e) => setLine(e.target.value)} />
+            </Field>
+            <Field label="Email">
+              <input style={styles.input} type="email" value={emailContact} onChange={(e) => setEmailContact(e.target.value)} />
+            </Field>
+            <Field label="Website">
+              <input style={styles.input} value={web} onChange={(e) => setWeb(e.target.value)} />
+            </Field>
+            {error && <p style={styles.error}>{error}</p>}
+            <button style={styles.submit} onClick={save} disabled={busy}>
+              {busy ? "Saving..." : "Save profile"}
             </button>
           </div>
-        </div>
+        </Sheet>
       )}
     </section>
   );
 }
 
-function WorksSection({ artistId, works }: { artistId: string; works: StudioArtwork[] }) {
+function WorksSection({ artistId, works, shows }: { artistId: string; works: StudioArtwork[]; shows: StudioExhibition[] }) {
   const router = useRouter();
   const supabase = createClient();
   const [rows, setRows] = useState(works);
-  const [adding, setAdding] = useState(false);
+  const [composing, setComposing] = useState(false);
 
-  async function addWork(title: string, duration: string, description: string) {
-    const slug = slugify(title) || `work-${Date.now()}`;
+  async function addWork(fields: {
+    title: string;
+    coverUrl: string | null;
+    audioUrl: string;
+    durationSec: number | null;
+    description: string;
+    exhibitionId: string | null;
+  }) {
+    const slug = slugify(fields.title) || `work-${Date.now()}`;
     const { data, error } = await supabase
       .from("artworks")
       .insert({
         artist_id: artistId,
         slug,
         code: makeCode(),
-        title,
-        duration_sec: duration ? secs(duration) : null,
-        description: description || null,
+        title: fields.title,
+        duration_sec: fields.durationSec,
+        description: fields.description || null,
+        cover_url: fields.coverUrl,
+        audio_url: fields.audioUrl,
         sort_order: rows.length,
       })
-      .select("id, title, duration_sec, description, cover_url, listen_count, sort_order")
+      .select("id, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order")
       .single();
-    if (!error && data) {
-      setRows((r) => [...r, data as StudioArtwork]);
+    if (error || !data) return { error: error?.message ?? "Could not publish the work." };
+
+    if (fields.exhibitionId) {
+      await supabase.from("exhibition_artworks").insert({ exhibition_id: fields.exhibitionId, artwork_id: data.id });
     }
-    setAdding(false);
+
+    setRows((r) => [...r, data as StudioArtwork]);
+    setComposing(false);
     router.refresh();
+    return {};
   }
 
   async function updateWork(id: string, fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url">>) {
@@ -418,50 +431,220 @@ function WorksSection({ artistId, works }: { artistId: string; works: StudioArtw
     <section style={styles.card}>
       <div style={styles.worksHead}>
         <h2 style={styles.h2}>Works ({rows.length})</h2>
-        <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setAdding((a) => !a)}>
-          {!adding && ADD_ICON} {adding ? "Cancel" : "Add work"}
+        <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setComposing(true)}>
+          {ADD_ICON} Add work
         </button>
       </div>
 
-      {adding && <AddWorkForm onSubmit={addWork} />}
+      {composing && <WorkComposer shows={shows} onClose={() => setComposing(false)} onSubmit={addWork} />}
 
       <div style={styles.workList}>
         {rows.map((w) => (
           <WorkRow key={w.id} work={w} onUpdate={updateWork} onDelete={deleteWork} />
         ))}
-        {rows.length === 0 && !adding && <p style={styles.empty}>No works yet.</p>}
+        {rows.length === 0 && !composing && <p style={styles.empty}>No works yet.</p>}
       </div>
     </section>
   );
 }
 
-function AddWorkForm({ onSubmit }: { onSubmit: (title: string, duration: string, description: string) => void }) {
+function readAudioDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const audio = new Audio();
+    audio.preload = "metadata";
+    audio.onloadedmetadata = () => {
+      const d = Number.isFinite(audio.duration) ? Math.round(audio.duration) : null;
+      URL.revokeObjectURL(url);
+      resolve(d);
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    audio.src = url;
+  });
+}
+
+function WorkComposer({
+  shows,
+  onClose,
+  onSubmit,
+}: {
+  shows: StudioExhibition[];
+  onClose: () => void;
+  onSubmit: (fields: {
+    title: string;
+    coverUrl: string | null;
+    audioUrl: string;
+    durationSec: number | null;
+    description: string;
+    exhibitionId: string | null;
+  }) => Promise<{ error?: string }>;
+}) {
+  const supabase = createClient();
+  const coverRef = useRef<HTMLInputElement>(null);
+  const soundRef = useRef<HTMLInputElement>(null);
+
   const [title, setTitle] = useState("");
-  const [duration, setDuration] = useState("");
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [soundName, setSoundName] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [durationSec, setDurationSec] = useState<number | null>(null);
+  const [soundUploading, setSoundUploading] = useState(false);
+  const [addText, setAddText] = useState(false);
   const [description, setDescription] = useState("");
+  const [exhibitionId, setExhibitionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    try {
+      setCoverUrl(await uploadFile(supabase, file));
+    } finally {
+      setCoverUploading(false);
+    }
+  }
+
+  async function handleSound(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSoundName(file.name);
+    setSoundUploading(true);
+    setError(null);
+    try {
+      const [url, duration] = await Promise.all([uploadFile(supabase, file), readAudioDuration(file)]);
+      setAudioUrl(url);
+      setDurationSec(duration);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that sound file.");
+      setSoundName(null);
+    } finally {
+      setSoundUploading(false);
+    }
+  }
+
+  async function publish() {
+    setError(null);
+    const t = title.trim();
+    if (!t) {
+      setError("Add a title to publish this work.");
+      return;
+    }
+    if (!audioUrl) {
+      setError("Add a sound file — every work needs one.");
+      return;
+    }
+    setBusy(true);
+    const result = await onSubmit({ title: t, coverUrl, audioUrl, durationSec, description, exhibitionId });
+    setBusy(false);
+    if (result.error) setError(result.error);
+  }
 
   return (
-    <form
-      style={{ ...styles.form, marginBottom: 18 }}
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit(title, duration, description);
-      }}
-    >
-      <Field label="Title">
-        <input style={styles.input} required value={title} onChange={(e) => setTitle(e.target.value)} />
-      </Field>
-      <Field label="Duration (m:ss)">
-        <input style={styles.input} placeholder="3:12" value={duration} onChange={(e) => setDuration(e.target.value)} />
-      </Field>
-      <Field label="Description">
-        <textarea style={styles.textarea} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-      </Field>
-      <p style={styles.hint}>You can add a cover photo after creating the work — until then it shows generated line art.</p>
-      <button style={styles.saveSm} type="submit">
-        Add
-      </button>
-    </form>
+    <>
+      <div style={styles.backdrop} onClick={onClose} />
+      <div style={styles.composer} role="dialog" aria-label="New work">
+        <div style={styles.composerTop}>
+          <button style={styles.ghostIconBtn} onClick={onClose} aria-label="Close" type="button">
+            {CLOSE_GLYPH}
+          </button>
+          <b style={{ fontSize: 14, fontWeight: 700 }}>New work</b>
+          <span style={{ width: 34 }} />
+        </div>
+        <div style={styles.composerBody}>
+          <div style={styles.composerHead}>
+            <button
+              type="button"
+              style={{ ...styles.coverUpload, backgroundImage: coverUrl ? `url(${coverUrl})` : undefined }}
+              onClick={() => coverRef.current?.click()}
+              aria-label="Add a cover image"
+            >
+              {!coverUrl && (coverUploading ? "…" : "+ Add cover")}
+            </button>
+            <input ref={coverRef} type="file" accept="image/*" hidden onChange={handleCover} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <input style={styles.titleInput} placeholder="ชื่องาน" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+          </div>
+
+          <div style={styles.composerSecHead}>
+            <h2 style={styles.h2}>Content</h2>
+            <span style={styles.composerSecLabel}>Shown in this order</span>
+          </div>
+
+          {!soundName ? (
+            <button type="button" style={styles.soundBox} onClick={() => soundRef.current?.click()}>
+              {MUSIC_ICON}
+              <span>Choose a sound file</span>
+            </button>
+          ) : (
+            <button type="button" style={styles.soundBoxFilled} onClick={() => soundRef.current?.click()}>
+              {MUSIC_ICON}
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {soundUploading ? "Uploading…" : soundName}
+              </span>
+              {durationSec != null && <span style={{ color: "rgba(255,255,255,.5)", fontSize: 12.5 }}>{clock(durationSec)}</span>}
+            </button>
+          )}
+          <input ref={soundRef} type="file" accept="audio/*" hidden onChange={handleSound} />
+
+          {!addText ? (
+            <button type="button" style={{ ...styles.addBtn, marginTop: 10 }} onClick={() => setAddText(true)}>
+              {ADD_ICON} Add text
+            </button>
+          ) : (
+            <textarea
+              style={{ ...styles.textarea, width: "100%", marginTop: 10, boxSizing: "border-box" }}
+              rows={3}
+              placeholder="Say something about this work"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          )}
+
+          {shows.length > 0 && (
+            <>
+              <div style={styles.composerSecHead}>
+                <h2 style={styles.h2}>Exhibition</h2>
+                <span style={styles.composerSecLabel}>Optional</span>
+              </div>
+              <div style={styles.chipRow}>
+                <button
+                  type="button"
+                  style={exhibitionId === null ? styles.chipActive : styles.chipInactive}
+                  onClick={() => setExhibitionId(null)}
+                >
+                  Not in an exhibition
+                </button>
+                {shows.map((sh) => (
+                  <button
+                    key={sh.id}
+                    type="button"
+                    style={exhibitionId === sh.id ? styles.chipActive : styles.chipInactive}
+                    onClick={() => setExhibitionId(sh.id)}
+                  >
+                    {sh.title}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {error && <p style={styles.error}>{error}</p>}
+        </div>
+        <div style={styles.composerBar}>
+          <button style={styles.submit} onClick={publish} disabled={busy || soundUploading || coverUploading} type="button">
+            {busy ? "Publishing..." : "Publish"}
+          </button>
+          <p style={styles.composerHint}>Publishing gives the work its page, a six-digit code and a QR to print.</p>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -487,7 +670,7 @@ function WorkRow({
     if (!file) return;
     setUploading(true);
     try {
-      const url = await uploadPhoto(supabase, file);
+      const url = await uploadFile(supabase, file);
       onUpdate(work.id, { cover_url: url });
     } finally {
       setUploading(false);
@@ -599,12 +782,16 @@ function ExhibitionsSection({ artistId, works, shows }: { artistId: string; work
     <section style={styles.card}>
       <div style={styles.worksHead}>
         <h2 style={styles.h2}>Exhibitions ({rows.length})</h2>
-        <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setAdding((a) => !a)}>
-          {!adding && ADD_ICON} {adding ? "Cancel" : "New exhibition"}
+        <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setAdding(true)}>
+          {ADD_ICON} New exhibition
         </button>
       </div>
 
-      {adding && <NewExhibitionForm works={works} onSubmit={createExhibition} />}
+      {adding && (
+        <Sheet title="New exhibition" onClose={() => setAdding(false)}>
+          <NewExhibitionForm works={works} onSubmit={createExhibition} />
+        </Sheet>
+      )}
 
       <div style={styles.workList}>
         {rows.map((sh) => (
@@ -626,7 +813,7 @@ function ExhibitionRow({ show, onCoverChange }: { show: StudioExhibition; onCove
     if (!file) return;
     setUploading(true);
     try {
-      const url = await uploadPhoto(supabase, file);
+      const url = await uploadFile(supabase, file);
       onCoverChange(show.id, url);
     } finally {
       setUploading(false);
@@ -755,6 +942,19 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {label}
       {children}
     </label>
+  );
+}
+
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <>
+      <div style={styles.backdrop} onClick={onClose} />
+      <div style={styles.sheet} role="dialog" aria-label={title}>
+        <div style={styles.handle} />
+        <h2 style={styles.sheetTitle}>{title}</h2>
+        {children}
+      </div>
+    </>
   );
 }
 
@@ -973,4 +1173,116 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   checkRow: { display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(255,255,255,.85)" },
+
+  backdrop: { position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 60 },
+  sheet: {
+    position: "fixed",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxWidth: 520,
+    margin: "0 auto",
+    background: "#161617",
+    color: "#fff",
+    borderRadius: "20px 20px 0 0",
+    padding: "10px 18px calc(24px + env(safe-area-inset-bottom))",
+    maxHeight: "88vh",
+    overflowY: "auto",
+    zIndex: 61,
+    boxShadow: "0 -20px 60px -20px rgba(0,0,0,.8)",
+  },
+  handle: { width: 36, height: 4, borderRadius: 999, background: "rgba(255,255,255,.22)", margin: "6px auto 16px" },
+  sheetTitle: { fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 16 },
+
+  composer: {
+    position: "fixed",
+    inset: 0,
+    maxWidth: 520,
+    margin: "0 auto",
+    background: "#000",
+    color: "#fff",
+    zIndex: 61,
+    display: "flex",
+    flexDirection: "column",
+  },
+  composerTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "calc(14px + env(safe-area-inset-top)) 14px 8px 18px",
+  },
+  ghostIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    border: 0,
+    background: "rgba(255,255,255,.08)",
+    color: "#fff",
+    display: "grid",
+    placeItems: "center",
+    cursor: "pointer",
+  },
+  composerBody: { flex: 1, overflowY: "auto", padding: "8px 18px 24px" },
+  composerHead: { display: "flex", gap: 14, alignItems: "flex-start" },
+  coverUpload: {
+    position: "relative",
+    width: 92,
+    aspectRatio: "210/297",
+    borderRadius: 6,
+    flex: "none",
+    overflow: "hidden",
+    display: "grid",
+    placeItems: "center",
+    border: "1px dashed rgba(255,255,255,.32)",
+    color: "rgba(255,255,255,.66)",
+    fontSize: 12,
+    lineHeight: 1.35,
+    textAlign: "center",
+    cursor: "pointer",
+    background: "center/cover no-repeat",
+  },
+  titleInput: {
+    height: 44,
+    width: "100%",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.06)",
+    color: "#fff",
+    padding: "0 12px",
+    fontSize: 15,
+    fontFamily: "inherit",
+    marginBottom: 8,
+  },
+  composerHint: { fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 6 },
+  composerSecHead: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 28, marginBottom: 10 },
+  composerSecLabel: { fontSize: 12.5, color: "rgba(255,255,255,.5)" },
+  soundBox: {
+    borderRadius: 12,
+    border: "1px dashed rgba(255,255,255,.28)",
+    padding: "18px",
+    textAlign: "center",
+    color: "rgba(255,255,255,.6)",
+    fontSize: 13.5,
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 6,
+  },
+  soundBoxFilled: {
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.06)",
+    padding: "14px 16px",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontSize: 13.5,
+    color: "#fff",
+    cursor: "pointer",
+  },
+  composerBar: {
+    padding: "14px 18px calc(14px + env(safe-area-inset-bottom))",
+    borderTop: "1px solid rgba(255,255,255,.1)",
+  },
 };
