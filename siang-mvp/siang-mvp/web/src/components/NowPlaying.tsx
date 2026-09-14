@@ -17,14 +17,16 @@ import {
   REPEAT_SVG,
   REPEAT_ONE_SVG,
 } from "@/lib/icons";
-import type { ArtistCard } from "@/lib/types";
+import type { ArtistCard, Artwork } from "@/lib/types";
+import ArtworkPiece from "./ArtworkPiece";
 import styles from "./NowPlaying.module.css";
 
 type Props = {
   onOpenArtist: (artist: ArtistCard) => void;
+  onShareWork: (artist: ArtistCard, work: Artwork) => void;
 };
 
-export default function NowPlaying({ onOpenArtist }: Props) {
+export default function NowPlaying({ onOpenArtist, onShareWork }: Props) {
   const { queue, elapsed, playing, shuffleOn, repeatOn, togglePlay, step, seekPct, toggleShuffle, toggleRepeat, nowOpen, closeNow } = usePlayer();
   const trackRef = useRef<HTMLDivElement>(null);
   const scrubbing = useRef(false);
@@ -56,13 +58,21 @@ export default function NowPlaying({ onOpenArtist }: Props) {
           <small>{queue.kind === "exhibition" ? "Playing from exhibition" : "Playing from artist"}</small>
           <b>{queue.label}</b>
         </span>
-        <button className={styles.ghostbtn} aria-label="Share this work">
+        <button className={styles.ghostbtn} aria-label="Share this work" onClick={() => onShareWork(artist, w)}>
           {SHARE_GLYPH}
         </button>
       </div>
 
       <div className={styles.nowBody}>
-        <div className={styles.nowArt} style={{ background: artist.cardBg }} />
+        <ArtworkPiece
+          className={styles.nowArt}
+          markId={artist.markId}
+          workIndex={artist.art.indexOf(w)}
+          cardBg={artist.cardBg}
+          cardInk={artist.cardInk}
+          seedKey={w.title}
+          coverUrl={w.coverUrl}
+        />
         <div className={styles.nowTitle}>
           <span className={styles.t}>
             <h1>{w.title}</h1>
@@ -153,7 +163,12 @@ export default function NowPlaying({ onOpenArtist }: Props) {
               onOpenArtist(artist);
             }}
           >
-            <span className={styles.avatar} style={{ background: artist.cardBg, color: artist.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[artist.markId] ?? "" }} />
+            {artist.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className={styles.avatar} src={artist.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <span className={styles.avatar} style={{ background: artist.cardBg, color: artist.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[artist.markId] ?? "" }} />
+            )}
             <span className={styles.t}>
               <b>{artist.name}</b>
               <span>{artist.based}</span>
@@ -162,7 +177,15 @@ export default function NowPlaying({ onOpenArtist }: Props) {
         </div>
 
         <button className={styles.nextrow} onClick={() => step(1)}>
-          <span className={styles.cov} style={{ background: artist.cardBg }} />
+          <ArtworkPiece
+            className={styles.cov}
+            markId={artist.markId}
+            workIndex={artist.art.indexOf(nextWork)}
+            cardBg={artist.cardBg}
+            cardInk={artist.cardInk}
+            seedKey={nextWork.title}
+            coverUrl={nextWork.coverUrl}
+          />
           <span className={styles.t}>
             <b>{nextWork.title}</b>
             <span>Next in {queue.label}</span>

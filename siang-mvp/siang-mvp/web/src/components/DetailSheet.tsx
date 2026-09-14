@@ -8,16 +8,18 @@ import { usePlayer } from "@/lib/player";
 import { PIN, CHEV, CLOSE_GLYPH, SHARE_GLYPH, QR_GLYPH, BACK_GLYPH, contactIcon, contactLabel, contactHref } from "@/lib/icons";
 import type { ArtistCard } from "@/lib/types";
 import CardFace from "./CardFace";
+import ArtworkPiece from "./ArtworkPiece";
 import styles from "./DetailSheet.module.css";
 
 type Props = {
   card: ArtistCard | null;
   position: string; // e.g. "01 of 07" or "Not in your Pocket yet"
   onClose: () => void;
-  onOpenExhibition: (show: ArtistCard["shows"][number], works: ArtistCard["art"]) => void;
+  onOpenExhibition: (artist: ArtistCard, showIndex: number) => void;
+  onShareArtist: (artist: ArtistCard) => void;
 };
 
-export default function DetailSheet({ card, position, onClose, onOpenExhibition }: Props) {
+export default function DetailSheet({ card, position, onClose, onOpenExhibition, onShareArtist }: Props) {
   const { playWork } = usePlayer();
   const [flipped, setFlipped] = useState(false);
   const [hintGone, setHintGone] = useState(false);
@@ -37,7 +39,7 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition 
           <div className={styles.detailTop}>
             <div className={styles.k}>{position}</div>
             <div className={styles.dtActs}>
-              <button className={styles.close} aria-label="Share this artist page">
+              <button className={styles.close} aria-label="Share this artist page" onClick={() => onShareArtist(card)}>
                 {SHARE_GLYPH}
               </button>
               <button className={styles.close} aria-label="Close card" onClick={onClose}>
@@ -105,7 +107,12 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition 
             </p>
 
             <div className={styles.dwho}>
-              <span className={styles.avatar} style={{ background: card.cardBg, color: card.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[card.markId] ?? "" }} />
+              {card.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className={styles.avatar} src={card.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span className={styles.avatar} style={{ background: card.cardBg, color: card.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[card.markId] ?? "" }} />
+              )}
               <div>
                 <h1 className={styles.dname}>{card.name}</h1>
                 <div className={styles.dkind}>siang.co/{card.slug}</div>
@@ -152,7 +159,15 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition 
                     const show = card.shows[w.showIndex];
                     return (
                       <button key={w.id} className={styles.tile} onClick={() => playWork(card, card.art, i, "artist", card.name)}>
-                        <span className={styles.piece} style={{ background: card.cardBg, color: card.cardInk }} />
+                        <ArtworkPiece
+                          className={styles.piece}
+                          markId={card.markId}
+                          workIndex={i}
+                          cardBg={card.cardBg}
+                          cardInk={card.cardInk}
+                          seedKey={w.title}
+                          coverUrl={w.coverUrl}
+                        />
                         <span className={styles.cap}>{w.title}</span>
                         {show && (
                           <span className={styles.loc}>
@@ -177,7 +192,7 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition 
                   const works = card.art.filter((w) => w.showIndex === i);
                   return (
                     <div className={styles.show} key={sh.title}>
-                      <button className={styles.showHead} onClick={() => onOpenExhibition(sh, works)}>
+                      <button className={styles.showHead} onClick={() => onOpenExhibition(card, i)}>
                         <span className={styles.t}>
                           <em>{sh.title}</em>
                           <span className={styles.loc}>
@@ -194,7 +209,15 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition 
                         <div className={styles.shelf}>
                           {works.slice(0, 3).map((w, wi) => (
                             <button key={w.id} className={styles.tile} onClick={() => playWork(card, works, wi, "exhibition", sh.title)}>
-                              <span className={styles.piece} style={{ background: card.cardBg, color: card.cardInk }} />
+                              <ArtworkPiece
+                                className={styles.piece}
+                                markId={card.markId}
+                                workIndex={card.art.indexOf(w)}
+                                cardBg={card.cardBg}
+                                cardInk={card.cardInk}
+                                seedKey={w.title}
+                                coverUrl={w.coverUrl}
+                              />
                               <span className={styles.cap}>{w.title}</span>
                             </button>
                           ))}

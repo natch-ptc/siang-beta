@@ -3,11 +3,13 @@
 
 export type Artwork = {
   id: string;
+  code: string; // six-digit code printed under the work's QR — see 0001_init.sql's makeCode()
   title: string;
   durationLabel: string; // "3:12"
   listenCount: number;
   showIndex: number; // which exhibition (index into ArtistCard.shows) this work hung in
   description: string;
+  coverUrl: string | null; // artist-uploaded photo; falls back to generated line art when absent
 };
 
 export type Exhibition = {
@@ -34,6 +36,7 @@ export type ArtistCard = {
   cardInk: string;
   tint: string; // accent hex used to tint the player
   markId: string; // key into MARKS
+  avatarUrl: string | null; // artist-uploaded photo; falls back to the drawn mark when absent
   bio: string;
   geo: string;
   joined: string; // "Feb 2025"

@@ -5,6 +5,7 @@ import { usePlayer } from "@/lib/player";
 import { tintPair } from "@/lib/color";
 import { secs } from "@/lib/format";
 import { PLAY_SVG, PAUSE_SVG } from "@/lib/icons";
+import ArtworkPiece from "./ArtworkPiece";
 import styles from "./MiniPlayer.module.css";
 
 export default function MiniPlayer() {
@@ -55,7 +56,15 @@ export default function MiniPlayer() {
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
     >
-      <span className={styles.cov} style={{ background: queue.artist.cardBg }} />
+      <ArtworkPiece
+        className={styles.cov}
+        markId={queue.artist.markId}
+        workIndex={queue.artist.art.indexOf(w)}
+        cardBg={queue.artist.cardBg}
+        cardInk={queue.artist.cardInk}
+        seedKey={w.title}
+        coverUrl={w.coverUrl}
+      />
       <span className={styles.t}>
         <b>{w.title}</b>
         <span>{queue.artist.name}</span>

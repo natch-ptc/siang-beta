@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import CardFace from "./CardFace";
+import { QR_GLYPH_BIG, USER_ICON } from "@/lib/icons";
 import type { ArtistCard } from "@/lib/types";
 import styles from "./CardStack.module.css";
 
@@ -14,9 +16,10 @@ const OP = [1, 1, 1, 1, 0.85, 0];
 type Props = {
   cards: ArtistCard[];
   onOpen: (card: ArtistCard) => void;
+  onScan: () => void;
 };
 
-export default function CardStack({ cards, onOpen }: Props) {
+export default function CardStack({ cards, onOpen, onScan }: Props) {
   const stackRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<HTMLDivElement[]>([]);
   const [active, setActive] = useState(0);
@@ -93,7 +96,9 @@ export default function CardStack({ cards, onOpen }: Props) {
         <div className={styles.count}>
           {n} card{n === 1 ? "" : "s"} in Pocket
         </div>
-        <button className={styles.me} aria-label="Your studio" />
+        <Link href="/studio" className={styles.me} aria-label="Your studio">
+          {USER_ICON}
+        </Link>
       </header>
 
       <main className={styles.stage}>
@@ -125,16 +130,8 @@ export default function CardStack({ cards, onOpen }: Props) {
         <button className={`${styles.pill} ${styles.pillSolid}`} onClick={() => onOpen(cards[active])}>
           Open card
         </button>
-        <button className={`${styles.pill} ${styles.pillIcon}`} aria-label="Scan a QR code to add an artist card">
-          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M3 8.5V4.6A1.6 1.6 0 0 1 4.6 3h3.9M15.5 3h3.9A1.6 1.6 0 0 1 21 4.6v3.9M21 15.5v3.9a1.6 1.6 0 0 1-1.6 1.6h-3.9M8.5 21H4.6A1.6 1.6 0 0 1 3 19.4v-3.9"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-            />
-            <path d="M3 12h18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-          </svg>
+        <button className={`${styles.pill} ${styles.pillIcon}`} aria-label="Scan a QR code to add an artist card" onClick={onScan}>
+          {QR_GLYPH_BIG}
         </button>
       </nav>
     </div>
