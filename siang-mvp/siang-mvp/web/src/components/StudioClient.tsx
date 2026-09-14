@@ -23,6 +23,7 @@ import {
   DOWNLOAD_ICON,
   SHARE_GLYPH,
   QR_GLYPH,
+  contactIcon,
 } from "@/lib/icons";
 import { QRCodeCanvas } from "qrcode.react";
 import { slugify } from "@/lib/slug";
@@ -371,33 +372,6 @@ function ProfileEditor({
       {uploadError && <p style={styles.error}>{uploadError}</p>}
 
       <p style={styles.hint}>One link for your Instagram bio. Everything you publish appears there.</p>
-      <div style={styles.pillRow}>
-        <button style={styles.pillDk} onClick={copyLink} type="button">
-          {LINK_ICON} {copied ? "Copied" : "Copy link"}
-        </button>
-        <Link href="/" style={styles.pillDk}>
-          View your page
-        </Link>
-        <button style={styles.pillDk} onClick={shareLink} type="button">
-          {SHARE_GLYPH} Share
-        </button>
-      </div>
-      <div style={styles.makeGrid}>
-        <button style={styles.makePink} onClick={onUpload} type="button">
-          <span>{ADD_ICON}</span>
-          <span>
-            <span style={styles.makeTitle}>Upload a work</span>
-            <span style={styles.makeSub}>Sound, text, images and video</span>
-          </span>
-        </button>
-        <button style={styles.make} onClick={onNewExhibition} type="button">
-          <span>{IMAGE_ICON}</span>
-          <span>
-            <span style={styles.makeTitle}>New exhibition</span>
-            <span style={styles.makeSub}>Group works for one show</span>
-          </span>
-        </button>
-      </div>
 
       {!editing ? (
         <>
@@ -405,13 +379,41 @@ function ProfileEditor({
           {contacts.length > 0 && (
             <div style={styles.chipRow}>
               {contacts.map((c) => (
-                <span key={c.kind} style={styles.chip}>
-                  {c.kind === "ig" ? "Instagram" : c.kind === "line" ? "LINE" : c.kind === "email" ? "Email" : "Website"}: {c.value}
+                <span key={c.kind} style={{ ...styles.chip, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  {contactIcon(c.kind)} {c.value}
                 </span>
               ))}
             </div>
           )}
           {saved && <span style={{ ...styles.savedTag, display: "block", marginTop: 10 }}>Saved</span>}
+
+          <div style={{ ...styles.pillRow, marginTop: 20 }}>
+            <button style={styles.pillDk} onClick={copyLink} type="button">
+              {LINK_ICON} {copied ? "Copied" : "Copy link"}
+            </button>
+            <Link href="/" style={styles.pillDk}>
+              View your page
+            </Link>
+            <button style={styles.pillDk} onClick={shareLink} type="button">
+              {SHARE_GLYPH} Share
+            </button>
+          </div>
+          <div style={styles.makeGrid}>
+            <button style={styles.makePink} onClick={onUpload} type="button">
+              <span>{ADD_ICON}</span>
+              <span>
+                <span style={styles.makeTitle}>Upload a work</span>
+                <span style={styles.makeSub}>Sound, text, images and video</span>
+              </span>
+            </button>
+            <button style={styles.make} onClick={onNewExhibition} type="button">
+              <span>{IMAGE_ICON}</span>
+              <span>
+                <span style={styles.makeTitle}>New exhibition</span>
+                <span style={styles.makeSub}>Group works for one show</span>
+              </span>
+            </button>
+          </div>
         </>
       ) : (
         <Sheet title="Edit profile" onClose={() => setEditing(false)}>
