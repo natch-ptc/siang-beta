@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import StudioClient, { type StudioArtist, type StudioArtwork } from "@/components/StudioClient";
+import StudioClient, { type StudioArtist, type StudioArtwork, type StudioContact, type StudioExhibition } from "@/components/StudioClient";
 
 export default async function StudioPage() {
   const supabase = await createClient();
@@ -17,14 +17,26 @@ export default async function StudioPage() {
     .maybeSingle<StudioArtist>();
 
   let works: StudioArtwork[] = [];
+  let contacts: StudioContact[] = [];
+  let shows: StudioExhibition[] = [];
   if (artist) {
-    const { data } = await supabase
-      .from("artworks")
-      .select("id, title, duration_sec, description, cover_url, listen_count, sort_order")
-      .eq("artist_id", artist.id)
-      .order("sort_order");
-    works = (data as StudioArtwork[]) ?? [];
+    const [worksRes, contactsRes, showsRes] = await Promise.all([
+      supabase
+        .from("artworks")
+        .select("id, title, duration_sec, description, cover_url, listen_count, sort_order")
+        .eq("artist_id", artist.id)
+        .order("sort_order"),
+      supabase.from("artist_contacts").select("kind, value").eq("artist_id", artist.id),
+      supabase
+        .from("exhibitions")
+        .select("id, title, kind, year, venue, exhibition_artworks(artwork_id)")
+        .eq("artist_id", artist.id)
+        .order("year", { ascending: false }),
+    ]);
+    works = (worksRes.data as StudioArtwork[]) ?? [];
+    contacts = (contactsRes.data as StudioContact[]) ?? [];
+    shows = (showsRes.data as unknown as StudioExhibition[]) ?? [];
   }
 
-  return <StudioClient email={email ?? ""} artist={artist ?? null} works={works} />;
+  return <StudioClient email={email ?? ""} artist={artist ?? null} works={works} contacts={contacts} shows={shows} />;
 }

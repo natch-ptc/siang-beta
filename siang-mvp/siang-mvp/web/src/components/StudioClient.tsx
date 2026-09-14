@@ -30,8 +30,22 @@ export type StudioArtwork = {
   sort_order: number;
 };
 
+export type StudioContact = {
+  kind: "ig" | "line" | "email" | "web";
+  value: string;
+};
+
+export type StudioExhibition = {
+  id: string;
+  title: string;
+  kind: "solo" | "group";
+  year: number | null;
+  venue: string | null;
+  exhibition_artworks: { artwork_id: string }[];
+};
 
 const makeCode = () => String(100000 + Math.floor(Math.random() * 899999));
+const BIO_LIMIT = 160;
 
 // Uploads to the shared public "media" bucket under the signed-in user's own
 // folder (storage RLS restricts writes to "{auth.uid()}/..." — see
@@ -55,10 +69,14 @@ export default function StudioClient({
   email,
   artist,
   works,
+  contacts,
+  shows,
 }: {
   email: string;
   artist: StudioArtist | null;
   works: StudioArtwork[];
+  contacts: StudioContact[];
+  shows: StudioExhibition[];
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -87,8 +105,9 @@ export default function StudioClient({
         <CreateProfile />
       ) : (
         <>
-          <ProfileEditor artist={artist} />
+          <ProfileEditor artist={artist} contacts={contacts} />
           <WorksSection artistId={artist.id} works={works} />
+          <ExhibitionsSection artistId={artist.id} works={works} shows={shows} />
         </>
       )}
     </main>
@@ -172,40 +191,91 @@ function CreateProfile() {
   );
 }
 
-function ProfileEditor({ artist }: { artist: StudioArtist }) {
+function contactValue(contacts: StudioContact[], kind: StudioContact["kind"]) {
+  return contacts.find((c) => c.kind === kind)?.value ?? "";
+}
+
+function ProfileEditor({ artist, contacts }: { artist: StudioArtist; contacts: StudioContact[] }) {
   const router = useRouter();
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [bio, setBio] = useState(artist.bio ?? "");
   const [avatarUrl, setAvatarUrl] = useState(artist.avatar_url);
-  const [saved, setSaved] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  async function save() {
-    setBusy(true);
-    setSaved(false);
-    await supabase.from("artists").update({ bio }).eq("id", artist.id);
-    setBusy(false);
-    setSaved(true);
-  }
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(artist.name);
+  const [discipline, setDiscipline] = useState(artist.discipline ?? "");
+  const [based, setBased] = useState(artist.based ?? "");
+  const [country, setCountry] = useState(artist.country ?? "");
+  const [bio, setBio] = useState(artist.bio ?? "");
+  const [ig, setIg] = useState(contactValue(contacts, "ig") ? "@" + contactValue(contacts, "ig") : "");
+  const [line, setLine] = useState(contactValue(contacts, "line"));
+  const [emailContact, setEmailContact] = useState(contactValue(contacts, "email"));
+  const [web, setWeb] = useState(contactValue(contacts, "web"));
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    setError(null);
+    setUploadError(null);
     try {
       const url = await uploadPhoto(supabase, file);
       await supabase.from("artists").update({ avatar_url: url }).eq("id", artist.id);
       setAvatarUrl(url);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      setUploadError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setUploading(false);
     }
+  }
+
+  async function save() {
+    setError(null);
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Add your name. It is the first thing visitors read.");
+      return;
+    }
+    const trimmedEmail = emailContact.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Check the email address. It needs an @ and a domain.");
+      return;
+    }
+
+    setBusy(true);
+    setSaved(false);
+
+    await supabase
+      .from("artists")
+      .update({
+        name: trimmedName,
+        discipline: discipline.trim() || null,
+        based: based.trim() || null,
+        country: country.trim() || null,
+        bio: bio.trim() || null,
+      })
+      .eq("id", artist.id);
+
+    const contactPairs: [StudioContact["kind"], string][] = [
+      ["ig", ig.trim().replace(/^@/, "")],
+      ["line", line.trim()],
+      ["email", trimmedEmail],
+      ["web", web.trim().replace(/^https?:\/\//i, "")],
+    ];
+    const toUpsert = contactPairs.filter(([, v]) => v).map(([kind, value]) => ({ artist_id: artist.id, kind, value }));
+    const toDelete = contactPairs.filter(([, v]) => !v).map(([kind]) => kind);
+    if (toUpsert.length) await supabase.from("artist_contacts").upsert(toUpsert, { onConflict: "artist_id,kind" });
+    if (toDelete.length) await supabase.from("artist_contacts").delete().eq("artist_id", artist.id).in("kind", toDelete);
+
+    setBusy(false);
+    setSaved(true);
+    setEditing(false);
+    router.refresh();
   }
 
   return (
@@ -220,24 +290,87 @@ function ProfileEditor({ artist }: { artist: StudioArtist }) {
           {!avatarUrl && (uploading ? "…" : CAMERA_ICON)}
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePhoto} />
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={styles.h1}>{artist.name}</h1>
           <p style={styles.sub}>
             siang.co/{artist.slug} · {[artist.discipline, artist.based].filter(Boolean).join(" · ")}
           </p>
         </div>
+        {!editing && (
+          <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start" }} onClick={() => setEditing(true)}>
+            {EDIT_ICON} Edit profile
+          </button>
+        )}
       </div>
-      {error && <p style={styles.error}>{error}</p>}
-      <div style={{ ...styles.form, marginTop: 18 }}>
-        <label style={styles.label}>
-          Bio
-          <textarea style={styles.textarea} rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
-        </label>
-        <button style={{ ...styles.saveSm, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={save} disabled={busy}>
-          {!busy && CHECK_ICON} {busy ? "Saving..." : "Save bio"}
-        </button>
-        {saved && <span style={styles.savedTag}>Saved</span>}
-      </div>
+      {uploadError && <p style={styles.error}>{uploadError}</p>}
+
+      {!editing ? (
+        <>
+          {artist.bio && <p style={{ ...styles.sub, marginTop: 14, color: "rgba(0,0,0,.78)" }}>{artist.bio}</p>}
+          {contacts.length > 0 && (
+            <div style={styles.chipRow}>
+              {contacts.map((c) => (
+                <span key={c.kind} style={styles.chip}>
+                  {c.kind === "ig" ? "Instagram" : c.kind === "line" ? "LINE" : c.kind === "email" ? "Email" : "Website"}: {c.value}
+                </span>
+              ))}
+            </div>
+          )}
+          {saved && <span style={{ ...styles.savedTag, display: "block", marginTop: 10 }}>Saved</span>}
+        </>
+      ) : (
+        <div style={{ ...styles.form, marginTop: 18 }}>
+          <Field label="Name">
+            <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+          <p style={styles.hint}>Your link stays siang.co/{artist.slug}, even if you change your name.</p>
+          <div style={styles.row}>
+            <Field label="Discipline">
+              <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
+            </Field>
+            <Field label="Based in">
+              <input style={styles.input} value={based} onChange={(e) => setBased(e.target.value)} />
+            </Field>
+          </div>
+          <Field label="Country">
+            <input style={styles.input} value={country} onChange={(e) => setCountry(e.target.value)} />
+          </Field>
+          <label style={styles.label}>
+            <span style={{ display: "flex", justifyContent: "space-between" }}>
+              Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
+            </span>
+            <textarea
+              style={styles.textarea}
+              rows={3}
+              maxLength={BIO_LIMIT}
+              value={bio}
+              onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))}
+            />
+          </label>
+          <div style={styles.fldH}>Contact</div>
+          <Field label="Instagram">
+            <input style={styles.input} placeholder="@handle" value={ig} onChange={(e) => setIg(e.target.value)} />
+          </Field>
+          <Field label="LINE ID">
+            <input style={styles.input} value={line} onChange={(e) => setLine(e.target.value)} />
+          </Field>
+          <Field label="Email">
+            <input style={styles.input} type="email" value={emailContact} onChange={(e) => setEmailContact(e.target.value)} />
+          </Field>
+          <Field label="Website">
+            <input style={styles.input} value={web} onChange={(e) => setWeb(e.target.value)} />
+          </Field>
+          {error && <p style={styles.error}>{error}</p>}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={{ ...styles.saveSm, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={save} disabled={busy}>
+              {!busy && CHECK_ICON} {busy ? "Saving..." : "Save profile"}
+            </button>
+            <button style={styles.rowBtn} onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -420,6 +553,165 @@ function WorkRow({
   );
 }
 
+function ExhibitionsSection({ artistId, works, shows }: { artistId: string; works: StudioArtwork[]; shows: StudioExhibition[] }) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [rows, setRows] = useState(shows);
+  const [adding, setAdding] = useState(false);
+
+  async function createExhibition(title: string, venue: string, year: number, kind: "solo" | "group", workIds: string[]) {
+    const { data, error } = await supabase
+      .from("exhibitions")
+      .insert({ artist_id: artistId, title, venue, year, kind })
+      .select("id, title, kind, year, venue")
+      .single();
+    if (error || !data) return { error: error?.message ?? "Could not create the exhibition." };
+
+    let linkedIds: string[] = [];
+    if (workIds.length) {
+      const { data: linked, error: linkError } = await supabase
+        .from("exhibition_artworks")
+        .insert(workIds.map((artwork_id) => ({ exhibition_id: data.id, artwork_id })))
+        .select("artwork_id");
+      if (linkError) {
+        // the exhibition itself was created; only the work links failed —
+        // still show it, but surface the error so it isn't silently wrong
+        setRows((r) => [{ ...data, exhibition_artworks: [] }, ...r]);
+        setAdding(false);
+        router.refresh();
+        return { error: `Exhibition created, but couldn't link works: ${linkError.message}` };
+      }
+      linkedIds = (linked ?? []).map((l) => l.artwork_id);
+    }
+    setRows((r) => [{ ...data, exhibition_artworks: linkedIds.map((id) => ({ artwork_id: id })) }, ...r]);
+    setAdding(false);
+    router.refresh();
+    return {};
+  }
+
+  return (
+    <section style={styles.card}>
+      <div style={styles.worksHead}>
+        <h2 style={styles.h2}>Exhibitions ({rows.length})</h2>
+        <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => setAdding((a) => !a)}>
+          {!adding && ADD_ICON} {adding ? "Cancel" : "New exhibition"}
+        </button>
+      </div>
+
+      {adding && <NewExhibitionForm works={works} onSubmit={createExhibition} />}
+
+      <div style={styles.workList}>
+        {rows.map((sh) => (
+          <div key={sh.id} style={styles.workRow}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={styles.workTitle}>{sh.title}</b>
+              <span style={styles.workMeta}>
+                {sh.kind === "solo" ? "Solo" : "Group"} · {sh.year ?? "—"} · {sh.venue ?? "No venue"} · {sh.exhibition_artworks.length} work
+                {sh.exhibition_artworks.length === 1 ? "" : "s"}
+              </span>
+            </div>
+          </div>
+        ))}
+        {rows.length === 0 && !adding && <p style={styles.empty}>No exhibitions yet.</p>}
+      </div>
+    </section>
+  );
+}
+
+function NewExhibitionForm({
+  works,
+  onSubmit,
+}: {
+  works: StudioArtwork[];
+  onSubmit: (
+    title: string,
+    venue: string,
+    year: number,
+    kind: "solo" | "group",
+    workIds: string[]
+  ) => Promise<{ error?: string }>;
+}) {
+  const [title, setTitle] = useState("");
+  const [venue, setVenue] = useState("");
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [kind, setKind] = useState<"solo" | "group">("solo");
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function toggle(id: string) {
+    setChecked((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const t = title.trim();
+    const v = venue.trim();
+    if (!t) {
+      setError("Add a title to create the exhibition.");
+      return;
+    }
+    if (!v) {
+      setError("Add where it is shown, so visitors can find it.");
+      return;
+    }
+    const y = +year;
+    setBusy(true);
+    const result = await onSubmit(t, v, y > 1900 ? y : new Date().getFullYear(), kind, [...checked]);
+    setBusy(false);
+    if (result.error) setError(result.error);
+  }
+
+  return (
+    <form style={{ ...styles.form, marginBottom: 18 }} onSubmit={submit}>
+      <Field label="Title">
+        <input style={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ชื่อนิทรรศการ" />
+      </Field>
+      <Field label="Where it's shown">
+        <input style={styles.input} value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Gallery or venue, city" />
+      </Field>
+      <div style={styles.row}>
+        <Field label="Year">
+          <input style={styles.input} inputMode="numeric" maxLength={4} value={year} onChange={(e) => setYear(e.target.value)} />
+        </Field>
+        <div>
+          <span style={{ ...styles.label, display: "block", marginBottom: 6 }}>Type</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" style={kind === "solo" ? styles.chipActive : styles.chipInactive} onClick={() => setKind("solo")}>
+              Solo
+            </button>
+            <button type="button" style={kind === "group" ? styles.chipActive : styles.chipInactive} onClick={() => setKind("group")}>
+              Group
+            </button>
+          </div>
+        </div>
+      </div>
+      {works.length > 0 && (
+        <div>
+          <span style={{ ...styles.label, display: "block", marginBottom: 6 }}>Works in this exhibition</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {works.map((w) => (
+              <label key={w.id} style={styles.checkRow}>
+                <input type="checkbox" checked={checked.has(w.id)} onChange={() => toggle(w.id)} />
+                <span>{w.title}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {error && <p style={styles.error}>{error}</p>}
+      <button style={styles.saveSm} type="submit" disabled={busy}>
+        {busy ? "Creating..." : "Create exhibition"}
+      </button>
+    </form>
+  );
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label style={styles.label}>
@@ -489,6 +781,7 @@ const styles: Record<string, React.CSSProperties> = {
   h2: { fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em" },
   sub: { fontSize: 13.5, color: "rgba(0,0,0,.55)", marginTop: 6 },
   hint: { fontSize: 12.5, color: "rgba(0,0,0,.45)", margin: 0 },
+  fldH: { fontSize: 15, fontWeight: 800, letterSpacing: "-0.025em", marginTop: 8 },
   form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 18 },
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
   label: { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,.7)" },
@@ -594,4 +887,35 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   empty: { fontSize: 13.5, color: "rgba(0,0,0,.5)" },
+  chipRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  chip: {
+    fontSize: 12.5,
+    padding: "6px 12px",
+    borderRadius: 999,
+    background: "rgba(0,0,0,.05)",
+    color: "rgba(0,0,0,.65)",
+  },
+  chipActive: {
+    height: 36,
+    padding: "0 16px",
+    borderRadius: 999,
+    border: "1px solid #000",
+    background: "#000",
+    color: "#fff",
+    fontSize: 13.5,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  chipInactive: {
+    height: 36,
+    padding: "0 16px",
+    borderRadius: 999,
+    border: "1px solid rgba(0,0,0,.14)",
+    background: "none",
+    color: "rgba(0,0,0,.7)",
+    fontSize: 13.5,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  checkRow: { display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(0,0,0,.8)" },
 };

@@ -34,7 +34,8 @@ body {
   letter-spacing: -0.011em;
   color: var(--ink);
   background: linear-gradient(180deg, var(--paper-top) 0%, var(--paper-top) 22%, var(--paper-bot) 100%);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
 }
