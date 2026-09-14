@@ -41,6 +41,7 @@ export type StudioExhibition = {
   kind: "solo" | "group";
   year: number | null;
   venue: string | null;
+  cover_url: string | null;
   exhibition_artworks: { artwork_id: string }[];
 };
 
@@ -563,7 +564,7 @@ function ExhibitionsSection({ artistId, works, shows }: { artistId: string; work
     const { data, error } = await supabase
       .from("exhibitions")
       .insert({ artist_id: artistId, title, venue, year, kind })
-      .select("id, title, kind, year, venue")
+      .select("id, title, kind, year, venue, cover_url")
       .single();
     if (error || !data) return { error: error?.message ?? "Could not create the exhibition." };
 
@@ -589,6 +590,11 @@ function ExhibitionsSection({ artistId, works, shows }: { artistId: string; work
     return {};
   }
 
+  async function updateCover(id: string, cover_url: string) {
+    setRows((r) => r.map((sh) => (sh.id === id ? { ...sh, cover_url } : sh)));
+    await supabase.from("exhibitions").update({ cover_url }).eq("id", id);
+  }
+
   return (
     <section style={styles.card}>
       <div style={styles.worksHead}>
@@ -602,19 +608,50 @@ function ExhibitionsSection({ artistId, works, shows }: { artistId: string; work
 
       <div style={styles.workList}>
         {rows.map((sh) => (
-          <div key={sh.id} style={styles.workRow}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={styles.workTitle}>{sh.title}</b>
-              <span style={styles.workMeta}>
-                {sh.kind === "solo" ? "Solo" : "Group"} · {sh.year ?? "—"} · {sh.venue ?? "No venue"} · {sh.exhibition_artworks.length} work
-                {sh.exhibition_artworks.length === 1 ? "" : "s"}
-              </span>
-            </div>
-          </div>
+          <ExhibitionRow key={sh.id} show={sh} onCoverChange={updateCover} />
         ))}
         {rows.length === 0 && !adding && <p style={styles.empty}>No exhibitions yet.</p>}
       </div>
     </section>
+  );
+}
+
+function ExhibitionRow({ show, onCoverChange }: { show: StudioExhibition; onCoverChange: (id: string, cover_url: string) => void }) {
+  const supabase = createClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadPhoto(supabase, file);
+      onCoverChange(show.id, url);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div style={styles.workRow}>
+      <button
+        style={{ ...styles.thumb, backgroundImage: show.cover_url ? `url(${show.cover_url})` : undefined }}
+        onClick={() => fileRef.current?.click()}
+        aria-label="Change exhibition cover photo"
+        type="button"
+      >
+        {!show.cover_url && (uploading ? "…" : CAMERA_ICON)}
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCover} />
+      </button>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={styles.workTitle}>{show.title}</b>
+        <span style={styles.workMeta}>
+          {show.kind === "solo" ? "Solo" : "Group"} · {show.year ?? "—"} · {show.venue ?? "No venue"} · {show.exhibition_artworks.length} work
+          {show.exhibition_artworks.length === 1 ? "" : "s"}
+        </span>
+      </div>
+    </div>
   );
 }
 

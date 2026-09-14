@@ -29,7 +29,7 @@ export default async function StudioPage() {
       supabase.from("artist_contacts").select("kind, value").eq("artist_id", artist.id),
       supabase
         .from("exhibitions")
-        .select("id, title, kind, year, venue, exhibition_artworks(artwork_id)")
+        .select("id, title, kind, year, venue, cover_url, exhibition_artworks(artwork_id)")
         .eq("artist_id", artist.id)
         .order("year", { ascending: false }),
     ]);
