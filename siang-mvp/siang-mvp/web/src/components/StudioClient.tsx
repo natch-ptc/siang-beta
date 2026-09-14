@@ -635,15 +635,6 @@ function ExhibitionRow({ show, onCoverChange }: { show: StudioExhibition; onCove
 
   return (
     <div style={styles.workRow}>
-      <button
-        style={{ ...styles.thumb, backgroundImage: show.cover_url ? `url(${show.cover_url})` : undefined }}
-        onClick={() => fileRef.current?.click()}
-        aria-label="Change exhibition cover photo"
-        type="button"
-      >
-        {!show.cover_url && (uploading ? "…" : CAMERA_ICON)}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCover} />
-      </button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <b style={styles.workTitle}>{show.title}</b>
         <span style={styles.workMeta}>
@@ -651,6 +642,15 @@ function ExhibitionRow({ show, onCoverChange }: { show: StudioExhibition; onCove
           {show.exhibition_artworks.length === 1 ? "" : "s"}
         </span>
       </div>
+      <button
+        style={{ ...styles.coverBtn, backgroundImage: show.cover_url ? `url(${show.cover_url})` : undefined }}
+        onClick={() => fileRef.current?.click()}
+        aria-label="Change exhibition cover photo"
+        type="button"
+      >
+        {!show.cover_url && (uploading ? "…" : CAMERA_ICON)}
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCover} />
+      </button>
     </div>
   );
 }
@@ -894,6 +894,18 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     flex: "none",
     border: "1px solid rgba(0,0,0,.12)",
+    background: "rgba(0,0,0,.04) center/cover no-repeat",
+    display: "grid",
+    placeItems: "center",
+    color: "rgba(0,0,0,.5)",
+    cursor: "pointer",
+  },
+  coverBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    flex: "none",
+    border: "1px solid rgba(0,0,0,.14)",
     background: "rgba(0,0,0,.04) center/cover no-repeat",
     display: "grid",
     placeItems: "center",
