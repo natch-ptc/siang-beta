@@ -6,6 +6,12 @@ Artists publish a card: a visual identity, a bio, their works, and the exhibitio
 
 > This repo also holds the project's original single-file HTML/CSS/JS mockup (`index.html`) — the working app is the Next.js + Supabase port under [`siang-mvp/siang-mvp/web`](siang-mvp/siang-mvp/web).
 
+<p align="center">
+  <img src="docs/screenshots/card-stack.png" width="30%" alt="Card stack" />
+  <img src="docs/screenshots/detail.png" width="30%" alt="Artist detail" />
+  <img src="docs/screenshots/player.png" width="30%" alt="Now Playing" />
+</p>
+
 ## Features
 
 - **Card stack** — swipe through your collected artist cards
