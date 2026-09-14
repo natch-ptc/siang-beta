@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
+import styles from "./StaticQr.module.css";
 
 /** Always-visible QR block for the dedicated "Scan it with your phone" section. */
 export default function StaticQr() {
@@ -17,15 +18,15 @@ export default function StaticQr() {
 
   return (
     <div>
-      <div className="inline-flex rounded-2xl bg-white p-4">
+      <div className={styles.qrBox}>
         {origin ? (
           <QRCodeCanvas value={mvpUrl} size={200} includeMargin />
         ) : (
-          <div style={{ width: 200, height: 200 }} />
+          <div className={styles.qrPlaceholder} />
         )}
       </div>
-      <p className="mt-3 text-sm text-black">siang.co/demo</p>
-      <Link href="/mvp" className="mt-1 inline-block text-sm text-black/60 underline underline-offset-4">
+      <p className={styles.label}>siang.co/demo</p>
+      <Link href="/mvp" className={styles.openLink}>
         open it here
       </Link>
     </div>
