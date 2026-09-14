@@ -31,6 +31,8 @@ import {
   SignOut,
   MusicNotes,
   Image as ImageIcon,
+  VideoCamera,
+  TextAlignLeft,
 } from "@phosphor-icons/react/dist/ssr";
 
 export const PIN = <MapPin size={13} weight="fill" />;
@@ -62,6 +64,8 @@ export const CHECK_ICON = <Check size={14} weight="bold" />;
 export const SIGN_OUT_ICON = <SignOut size={14} weight="bold" />;
 export const MUSIC_ICON = <MusicNotes size={16} weight="regular" />;
 export const IMAGE_ICON = <ImageIcon size={20} weight="regular" />;
+export const VIDEO_ICON = <VideoCamera size={16} weight="regular" />;
+export const TEXT_ICON = <TextAlignLeft size={16} weight="regular" />;
 
 const CONTACT_ICON: Record<string, React.ReactNode> = {
   ig: <InstagramLogo size={14} weight="regular" />,

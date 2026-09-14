@@ -6,7 +6,19 @@ import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { clock, secs } from "@/lib/format";
-import { SIGN_OUT_ICON, EDIT_ICON, DELETE_ICON, ADD_ICON, CAMERA_ICON, BACK_CHEVRON_SVG, CLOSE_GLYPH, MUSIC_ICON } from "@/lib/icons";
+import {
+  SIGN_OUT_ICON,
+  EDIT_ICON,
+  DELETE_ICON,
+  ADD_ICON,
+  CAMERA_ICON,
+  BACK_CHEVRON_SVG,
+  CLOSE_GLYPH,
+  MUSIC_ICON,
+  IMAGE_ICON,
+  VIDEO_ICON,
+  TEXT_ICON,
+} from "@/lib/icons";
 import { slugify } from "@/lib/slug";
 
 export type StudioArtist = {
@@ -109,7 +121,7 @@ export default function StudioClient({
       ) : (
         <>
           <ProfileEditor artist={artist} contacts={contacts} />
-          <WorksSection artistId={artist.id} works={works} shows={shows} />
+          <WorksSection artistId={artist.id} artistSlug={artist.slug} works={works} shows={shows} />
           <ExhibitionsSection artistId={artist.id} works={works} shows={shows} />
         </>
       )}
@@ -375,7 +387,17 @@ function ProfileEditor({ artist, contacts }: { artist: StudioArtist; contacts: S
   );
 }
 
-function WorksSection({ artistId, works, shows }: { artistId: string; works: StudioArtwork[]; shows: StudioExhibition[] }) {
+function WorksSection({
+  artistId,
+  artistSlug,
+  works,
+  shows,
+}: {
+  artistId: string;
+  artistSlug: string;
+  works: StudioArtwork[];
+  shows: StudioExhibition[];
+}) {
   const router = useRouter();
   const supabase = createClient();
   const [rows, setRows] = useState(works);
@@ -436,7 +458,7 @@ function WorksSection({ artistId, works, shows }: { artistId: string; works: Stu
         </button>
       </div>
 
-      {composing && <WorkComposer shows={shows} onClose={() => setComposing(false)} onSubmit={addWork} />}
+      {composing && <WorkComposer artistSlug={artistSlug} shows={shows} onClose={() => setComposing(false)} onSubmit={addWork} />}
 
       <div style={styles.workList}>
         {rows.map((w) => (
@@ -467,10 +489,12 @@ function readAudioDuration(file: File): Promise<number | null> {
 }
 
 function WorkComposer({
+  artistSlug,
   shows,
   onClose,
   onSubmit,
 }: {
+  artistSlug: string;
   shows: StudioExhibition[];
   onClose: () => void;
   onSubmit: (fields: {
@@ -487,6 +511,7 @@ function WorkComposer({
   const soundRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState("");
+  const [titleEn, setTitleEn] = useState("");
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const [soundName, setSoundName] = useState<string | null>(null);
@@ -545,6 +570,15 @@ function WorkComposer({
     if (result.error) setError(result.error);
   }
 
+  function fillSample() {
+    setTitle("น้ำนิ่ง (ตัวอย่าง)");
+    setTitleEn("Still Water (sample)");
+    setAddText(true);
+    setDescription("Thrown celadon, recorded inside the kiln while it fires.");
+  }
+
+  const linkSlug = slugify(titleEn || title);
+
   return (
     <>
       <div style={styles.backdrop} onClick={onClose} />
@@ -554,7 +588,9 @@ function WorkComposer({
             {CLOSE_GLYPH}
           </button>
           <b style={{ fontSize: 14, fontWeight: 700 }}>New work</b>
-          <span style={{ width: 34 }} />
+          <button style={styles.linkish} onClick={fillSample} type="button">
+            Fill a sample
+          </button>
         </div>
         <div style={styles.composerBody}>
           <div style={styles.composerHead}>
@@ -564,11 +600,27 @@ function WorkComposer({
               onClick={() => coverRef.current?.click()}
               aria-label="Add a cover image"
             >
-              {!coverUrl && (coverUploading ? "…" : "+ Add cover")}
+              {!coverUrl &&
+                (coverUploading ? (
+                  "…"
+                ) : (
+                  <>
+                    + Add cover
+                    <br />
+                    <span style={{ opacity: 0.7, fontSize: 11 }}>optional</span>
+                  </>
+                ))}
             </button>
             <input ref={coverRef} type="file" accept="image/*" hidden onChange={handleCover} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <input style={styles.titleInput} placeholder="ชื่องาน" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input
+                style={{ ...styles.titleInput, marginBottom: 4 }}
+                placeholder="Title in English (optional)"
+                value={titleEn}
+                onChange={(e) => setTitleEn(e.target.value)}
+              />
+              {linkSlug && <p style={styles.composerHint}>Link: siang.co/{artistSlug}/{linkSlug} (from the English title)</p>}
             </div>
           </div>
 
@@ -577,9 +629,15 @@ function WorkComposer({
             <span style={styles.composerSecLabel}>Shown in this order</span>
           </div>
 
+          <div style={styles.soundHead}>
+            <span style={styles.soundHeadLabel}>
+              {MUSIC_ICON} Sound <span style={styles.soundHeadSub}>One per work, required</span>
+            </span>
+          </div>
+
           {!soundName ? (
             <button type="button" style={styles.soundBox} onClick={() => soundRef.current?.click()}>
-              {MUSIC_ICON}
+              {ADD_ICON}
               <span>Choose a sound file</span>
             </button>
           ) : (
@@ -593,11 +651,20 @@ function WorkComposer({
           )}
           <input ref={soundRef} type="file" accept="audio/*" hidden onChange={handleSound} />
 
-          {!addText ? (
-            <button type="button" style={{ ...styles.addBtn, marginTop: 10 }} onClick={() => setAddText(true)}>
-              {ADD_ICON} Add text
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <span style={styles.chipSmActive}>{MUSIC_ICON} Sound</span>
+            <button type="button" style={addText ? styles.chipSmActive : styles.chipSmInactive} onClick={() => setAddText((a) => !a)}>
+              {TEXT_ICON} Text
             </button>
-          ) : (
+            <button type="button" style={styles.chipSmInactive} onClick={() => coverRef.current?.click()}>
+              {IMAGE_ICON} Image
+            </button>
+            <span style={styles.chipSmDisabled} title="Video isn't supported yet">
+              {VIDEO_ICON} Video
+            </span>
+          </div>
+
+          {addText && (
             <textarea
               style={{ ...styles.textarea, width: "100%", marginTop: 10, boxSizing: "border-box" }}
               rows={3}
@@ -1284,5 +1351,51 @@ const styles: Record<string, React.CSSProperties> = {
   composerBar: {
     padding: "14px 18px calc(14px + env(safe-area-inset-bottom))",
     borderTop: "1px solid rgba(255,255,255,.1)",
+  },
+  linkish: { background: "none", border: 0, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  soundHead: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 },
+  soundHeadLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 700 },
+  soundHeadSub: { fontSize: 12, color: "rgba(255,255,255,.5)", fontWeight: 400, marginLeft: 4 },
+  chipSmActive: {
+    height: 32,
+    padding: "0 14px",
+    borderRadius: 999,
+    border: "1px solid #fff",
+    background: "#fff",
+    color: "#000",
+    fontSize: 12.5,
+    fontWeight: 600,
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  chipSmInactive: {
+    height: 32,
+    padding: "0 14px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.08)",
+    color: "#fff",
+    fontSize: 12.5,
+    fontWeight: 600,
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  chipSmDisabled: {
+    height: 32,
+    padding: "0 14px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.1)",
+    background: "rgba(255,255,255,.04)",
+    color: "rgba(255,255,255,.35)",
+    fontSize: 12.5,
+    fontWeight: 600,
+    cursor: "default",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
   },
 };
