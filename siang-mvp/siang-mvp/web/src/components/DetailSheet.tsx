@@ -23,11 +23,17 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition,
   const { playWork } = usePlayer();
   const [flipped, setFlipped] = useState(false);
   const [hintGone, setHintGone] = useState(false);
+  const [peek, setPeek] = useState(false);
 
-  // reset per-card UI state whenever a new card is opened
+  // reset per-card UI state whenever a new card is opened, then nudge the
+  // card once the sheet has finished sliding up, hinting that it flips
   useEffect(() => {
     setFlipped(false);
     setHintGone(false);
+    setPeek(false);
+    if (!card) return;
+    const t = setTimeout(() => setPeek(true), 640);
+    return () => clearTimeout(t);
   }, [card?.slug]);
 
   const open = card !== null;
@@ -51,7 +57,7 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition,
           <div className={styles.detailBody}>
             <div className={styles.hero}>
               <div
-                className={`${styles.flip} ${flipped ? styles.flipped : ""}`}
+                className={`${styles.flip} ${flipped ? styles.flipped : ""} ${peek ? styles.peek : ""}`}
                 role="button"
                 tabIndex={0}
                 aria-pressed={flipped}
@@ -59,14 +65,17 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition,
                 onClick={() => {
                   setFlipped((f) => !f);
                   setHintGone(true);
+                  setPeek(false);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     setFlipped((f) => !f);
                     setHintGone(true);
+                    setPeek(false);
                   }
                 }}
+                onAnimationEnd={() => setPeek(false)}
               >
                 <div className={styles.side}>
                   <CardFace card={card} />

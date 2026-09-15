@@ -50,11 +50,16 @@ export default function CardStack({ cards, onOpen, onScan }: Props) {
     });
   };
 
+  const mountedRef = useRef(false);
   useEffect(() => {
-    layout(true);
-    // re-layout on resize, matching the original's viewport-relative offsets
-    window.addEventListener("resize", () => layout(false));
-    return () => window.removeEventListener("resize", () => layout(false));
+    // Only the very first paint (and a window resize) should snap instantly —
+    // an active change after that (sending a card to the back) should ease
+    // the rest of the stack forward instead of popping into place.
+    layout(!mountedRef.current);
+    mountedRef.current = true;
+    const onResize = () => layout(true);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, n]);
 

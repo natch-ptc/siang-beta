@@ -70,6 +70,14 @@
 .flip.flipped {
   transform: rotateY(180deg);
 }
+.flip.peek {
+  animation: flipPeek 900ms var(--ease) 1;
+}
+@keyframes flipPeek {
+  0%, 100% { transform: rotateY(0deg); }
+  40% { transform: rotateY(-22deg); }
+  65% { transform: rotateY(6deg); }
+}
 .side {
   position: absolute;
   inset: 0;
