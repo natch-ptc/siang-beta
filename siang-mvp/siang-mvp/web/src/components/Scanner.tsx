@@ -44,7 +44,7 @@ function findWorkByCode(allCards: ArtistCard[], code: string): { artist: ArtistC
 }
 
 export default function Scanner({ open, allCards, ownedSlugs, onClose, onAdd }: Props) {
-  const { playWork } = usePlayer();
+  const { playWork, openNow } = usePlayer();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -169,6 +169,9 @@ export default function Scanner({ open, allCards, ownedSlugs, onClose, onAdd }: 
   function openWork(artist: ArtistCard, work: Artwork) {
     playWork(artist, artist.art, artist.art.indexOf(work), "artist", artist.name);
     onClose();
+    // Wait for the scanner's own close so the Now Playing sheet slides up
+    // over the home screen, not over the still-visible scanner.
+    requestAnimationFrame(() => openNow());
   }
 
   if (!open) return null;
