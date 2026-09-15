@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import HomeClient from "@/components/HomeClient";
 import { createClient } from "@/lib/supabase/server";
 import { fetchArtists } from "@/lib/queries";
 import { OWNED } from "@/lib/mock-artists";
+
+export const metadata: Metadata = {
+  title: "Pocket · artist cards",
+};
 
 export default async function Home() {
   const supabase = await createClient();

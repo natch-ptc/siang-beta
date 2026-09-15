@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Pocket · artist cards",
+  title: "Siang.co ศิลปะฟังได้",
   description: "Artist cards, ported to Next.js + Supabase",
 };
 
