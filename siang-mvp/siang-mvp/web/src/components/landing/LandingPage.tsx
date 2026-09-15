@@ -5,6 +5,7 @@ import LandingHeader from "./LandingHeader";
 import SiteFooter from "./SiteFooter";
 import ScanDemo from "./ScanDemo";
 import StaticQr from "./StaticQr";
+import PrintQr from "./PrintQr";
 import "@/styles/siang-tokens.css";
 import styles from "./LandingPage.module.css";
 
@@ -294,7 +295,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div className={styles.printBody}>
-                <div className={styles.printQr}>▦</div>
+                <PrintQr />
                 <div className={styles.printInfo}>
                   <p className={styles.printInfoTitle}>น้ำนิ่ง (Still Water)</p>
                   <p className={styles.printInfoArtist}>Anong Vetchakul</p>
