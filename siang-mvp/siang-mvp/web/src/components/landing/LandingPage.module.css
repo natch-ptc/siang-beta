@@ -828,6 +828,9 @@
   color: var(--on-black);
   padding: var(--space-9) var(--container-pad-sm);
 }
+.closing .h2 {
+  color: var(--on-black);
+}
 .closingLede {
   margin-top: var(--space-3);
   color: rgba(255, 255, 255, 0.6);
