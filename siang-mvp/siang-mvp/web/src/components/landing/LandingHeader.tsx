@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import styles from "./LandingHeader.module.css";
 
@@ -6,8 +7,7 @@ export default function LandingHeader() {
     <header className={styles.header}>
       <div className={styles.inner}>
         <Link href="/" className={styles.logo}>
-          <span aria-hidden className={styles.logoMark}>▶◀▶</span>
-          Siang
+          <Image src="/siang-logo.png" alt="Siang" width={1899} height={429} className={styles.logoImg} priority />
         </Link>
         <nav className={styles.nav}>
           <a href="#home" className={styles.navActive}>Home</a>

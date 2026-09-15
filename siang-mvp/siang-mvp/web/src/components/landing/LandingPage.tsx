@@ -1,9 +1,33 @@
+import Image from "next/image";
 import Link from "next/link";
+import { Export, Play } from "@phosphor-icons/react/dist/ssr";
 import LandingHeader from "./LandingHeader";
 import ScanDemo from "./ScanDemo";
 import StaticQr from "./StaticQr";
 import "@/styles/siang-tokens.css";
 import styles from "./LandingPage.module.css";
+
+// Hand-drawn line-art vessel icon (wide shallow bowl on a short pedestal),
+// used as the placeholder artwork thumbnail. Matches the house style in
+// lib/marks.ts — inline SVG, stroke="currentColor", no icon library.
+function VesselIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 100 96"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="50" cy="14" r="3" fill="currentColor" stroke="none" />
+      <path d="M20 30h60c0 22-10 34-30 34S20 52 20 30z" />
+      <path d="M50 64v10M38 82h24" />
+    </svg>
+  );
+}
 
 const PROBLEMS = [
   "A link in a bio goes nowhere, or it goes to a shop",
@@ -31,10 +55,99 @@ const ANALYTICS_ROWS = [
   { work: "ลมในเตา (Kiln Wind)", scans: 88, opens: 84, listens: 61, avg: "0:48", source: "53 / 30 / 5" },
 ];
 
+const PLAN_ROWS = ["ARTIST HUB", "BUILDING WORK", "PUBLISHED AT ONCE", "OVER THE LIMIT", "CONTENT LAYERS", "NUMBERS"] as const;
+
 const PLANS = [
-  { name: "FREE", price: "฿0", note: "Build and preview, nothing published" },
-  { name: "ARTIST", price: "฿99", note: "per month, publish your own work" },
-  { name: "STUDIO", price: "฿159", note: "per month, publish for a whole studio" },
+  {
+    id: "free",
+    label: "FREE",
+    price: "฿0",
+    sub: "Starting out",
+    rows: [
+      "Photo, name, bio, up to four links",
+      "Unlimited, preview on your phone",
+      "0",
+      "Not available",
+      "All of them, in draft",
+      "Hub views",
+    ],
+    cta: "Start free",
+    ctaVariant: "outline" as const,
+  },
+  {
+    id: "artist",
+    label: "ARTIST",
+    badge: "Most common",
+    price: "฿99 per month",
+    sub: "Showing in several places",
+    rows: [
+      "Cover image, work grid, your own ordering",
+      "Unlimited",
+      "20 pieces",
+      "Not available",
+      "Audio, text, image, video",
+      "Per work",
+    ],
+    cta: "Choose Artist",
+    ctaVariant: "solid" as const,
+    highlight: true,
+  },
+  {
+    id: "studio",
+    label: "STUDIO",
+    price: "฿159 per month",
+    sub: "Solo shows and large bodies of work",
+    rows: [
+      "Same as Artist",
+      "Unlimited",
+      "50 pieces",
+      "Additional fee",
+      "Longer video, more storage",
+      "Everything, with source and export",
+    ],
+    cta: "Choose Studio",
+    ctaVariant: "outline" as const,
+  },
+];
+
+const PRICING_FOOTNOTES = [
+  "The charge starts at the moment you publish a work to the public",
+  "New artists get the Artist package free for three months",
+];
+
+const FOOTER_COLUMNS = [
+  {
+    heading: "Product",
+    links: [
+      { label: "Artist Hub", href: "#artist-hub" },
+      { label: "Piece Page", href: "#piece-page" },
+      { label: "Pricing", href: "#pricing" },
+      { label: "The app", href: "/mvp" },
+    ],
+  },
+  {
+    heading: "For",
+    links: [
+      { label: "Artists", href: "#artist-hub" },
+      { label: "Galleries and festivals", href: "#pricing" },
+      { label: "Visitors", href: "#piece-page" },
+    ],
+  },
+  {
+    heading: "Company",
+    links: [
+      { label: "About", href: "#" },
+      { label: "Contact", href: "mailto:siangplatform@gmail.com" },
+    ],
+  },
+  {
+    heading: "Legal",
+    links: [
+      { label: "Privacy and PDPA", href: "#" },
+      { label: "Terms", href: "#" },
+      { label: "Report a page", href: "#" },
+    ],
+  },
 ];
 
 export default function LandingPage() {
@@ -62,11 +175,11 @@ export default function LandingPage() {
           <div className={styles.heroCard}>
             <div className={styles.heroCardTop}>
               <span>ไทย · EN</span>
-              <span>⤴</span>
+              <Export size={16} weight="regular" aria-hidden="true" />
             </div>
             <div className={styles.heroCardBody}>
               <div className={styles.heroThumb}>
-                <span>🏺</span>
+                <VesselIcon className={styles.heroThumbIcon} />
               </div>
               <dl className={styles.heroDl}>
                 <Row label="Audio" value="Anong, in English" />
@@ -80,7 +193,9 @@ export default function LandingPage() {
               </dl>
             </div>
             <div className={styles.heroPlayer}>
-              <span className={styles.playBtn}>▶</span>
+              <span className={styles.playBtn}>
+                <Play size={16} weight="fill" aria-hidden="true" />
+              </span>
               <div>
                 <p className={styles.heroTrackTitle}>น้ำนิ่ง (Still Water)</p>
                 <p className={styles.heroTrackMeta}>Anong Vetchakul · 0:00 / 4:12</p>
@@ -127,7 +242,9 @@ export default function LandingPage() {
             <div className={styles.hubCard}>
               <p className={styles.hubHandle}>🔗 siang.co/anong</p>
               <div className={styles.hubProfile}>
-                <span className={styles.hubAvatar}>🏺</span>
+                <span className={styles.hubAvatar}>
+                  <VesselIcon className={styles.hubAvatarIcon} />
+                </span>
                 <div>
                   <p className={styles.hubName}>Anong Vetchakul</p>
                   <p className={styles.hubHandleSmall}>siang.co/anong</p>
@@ -308,22 +425,47 @@ export default function LandingPage() {
       <section id="pricing" className={styles.section}>
         <div className={styles.container}>
           <h2 className={styles.h2}>Free to build, you pay when you publish</h2>
-          <p className={styles.sectionLede}>
-            Build as much as you want without paying. The charge starts at the moment you publish a work to the
-            public. The audience never pays.
-          </p>
+          <p className={styles.sectionLede}>The audience never pays, ever</p>
           <div className={styles.plans}>
             {PLANS.map((p) => (
-              <div key={p.name}>
-                <p className={styles.planName}>{p.name}</p>
+              <div
+                key={p.id}
+                className={`${styles.planCard} ${p.highlight ? styles.planCardHighlight : ""}`}
+              >
+                <div className={styles.planHead}>
+                  <span className={styles.planName}>{p.label}</span>
+                  {p.badge ? <span className={styles.planBadge}>{p.badge}</span> : null}
+                </div>
                 <p className={styles.planPrice}>{p.price}</p>
-                <p className={styles.planNote}>{p.note}</p>
+                <p className={styles.planSub}>{p.sub}</p>
+                <ul className={styles.planRows}>
+                  {PLAN_ROWS.map((label, i) => (
+                    <li key={label} className={styles.planRow}>
+                      <span className={styles.planRowLabel}>{label}</span>
+                      <span className={styles.planRowValue}>{p.rows[i]}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/claim-your-link"
+                  className={p.ctaVariant === "solid" ? styles.planCtaSolid : styles.planCtaOutline}
+                >
+                  {p.cta}
+                </Link>
               </div>
             ))}
           </div>
-          <a href="#" className={styles.pricingLink}>
-            See what is in each
-          </a>
+          <ul className={styles.pricingFootnotes}>
+            {PRICING_FOOTNOTES.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+            <li>
+              Galleries, festivals and venues are{" "}
+              <a href="mailto:siangplatform@gmail.com" className={styles.pricingFootnoteLink}>
+                quoted separately
+              </a>
+            </li>
+          </ul>
         </div>
       </section>
 
@@ -343,8 +485,42 @@ export default function LandingPage() {
 
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
-          <span>© {new Date().getFullYear()} Siang</span>
-          <Link href="/mvp">View the demo app</Link>
+          <Link href="/" className={styles.footerLogo}>
+            <Image src="/siang-logo.png" alt="Siang" width={1899} height={429} className={styles.footerLogoImg} />
+          </Link>
+
+          <div className={styles.footerColumns}>
+            {FOOTER_COLUMNS.map((col) => (
+              <div key={col.heading}>
+                <p className={styles.footerColHeading}>{col.heading}</p>
+                <ul className={styles.footerColLinks}>
+                  {col.links.map((l) => (
+                    <li key={l.label}>
+                      <a href={l.href}>{l.label}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.footerStores}>
+            <span className={styles.footerStorePill}>Download on the App Store</span>
+            <span className={styles.footerStorePill}>Get it on Google Play</span>
+          </div>
+
+          <div className={styles.footerLegal}>
+            <p>ONEPUT TECHNOLOGY COMPANY LIMITED</p>
+            <p>Registration 0105568157196</p>
+            <p>1071/113 Bang Khun Thian to Chai Thale Road, Tha Kham, Bang Khun Thian, Bangkok 10150</p>
+            <p>
+              <a href="mailto:siangplatform@gmail.com">siangplatform@gmail.com</a>
+            </p>
+            <p>
+              <a href="tel:0909868694">090 986 8694</a>
+            </p>
+          </div>
+          <p className={styles.footerCopyright}>© {new Date().getFullYear()} ONEPUT TECHNOLOGY COMPANY LIMITED</p>
         </div>
       </footer>
     </div>
