@@ -204,7 +204,6 @@ export default function LandingPage() {
             <p className={styles.heroMadeWith}>Made with Siang</p>
           </div>
         </div>
-        <p className={styles.heroCaption}>A published page, opened from the code beside the work</p>
       </section>
 
       {/* Problem */}
