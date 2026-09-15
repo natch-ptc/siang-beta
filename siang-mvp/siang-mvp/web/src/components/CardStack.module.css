@@ -19,10 +19,9 @@
   z-index: 6;
 }
 
-.count {
-  font-size: 13px;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
+.logo {
+  height: 20px;
+  width: auto;
 }
 
 .me {

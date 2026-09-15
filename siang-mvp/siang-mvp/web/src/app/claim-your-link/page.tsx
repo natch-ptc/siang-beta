@@ -2,8 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import LandingHeader from "@/components/landing/LandingHeader";
+import SiteFooter from "@/components/landing/SiteFooter";
+import "@/styles/siang-tokens.css";
+import styles from "./ClaimYourLink.module.css";
 
-const ACCENT = "#c2397c";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ClaimYourLinkPage() {
@@ -56,100 +59,88 @@ export default function ClaimYourLinkPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-white text-black">
-      <header className="border-b border-black/10 px-5 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
-            <span aria-hidden className="text-xl leading-none">▶◀▶</span>
-            Siang
-          </Link>
-          <Link href="/" className="text-sm text-black/60 hover:text-black">
-            Back
-          </Link>
-        </div>
-      </header>
+    <div className={`siang ${styles.page}`}>
+      <LandingHeader />
 
-      <div className="mx-auto flex max-w-md flex-col items-stretch px-5 py-16 sm:px-8">
-        {done ? (
-          <div className="rounded-3xl border border-black/10 p-8 text-center">
-            <p className="text-2xl font-extrabold tracking-tight">You&apos;re on the list</p>
-            <p className="mt-3 text-black/60">
-              We&apos;ll email you at <strong className="text-black">{done.email}</strong> when your link is ready.
-            </p>
-            <Link
-              href="/"
-              className="mt-8 inline-block rounded-full px-7 py-3 text-sm font-semibold text-white"
-              style={{ background: ACCENT }}
-            >
-              Back to Siang
-            </Link>
+      <main className={styles.main}>
+        <div className={styles.formWrap}>
+          <div className={styles.card}>
+            {done ? (
+              <div className={styles.success}>
+                <p className={styles.successTitle}>You&apos;re on the list</p>
+                <p className={styles.successBody}>
+                  We&apos;ll email you at <strong>{done.email}</strong> when your link is ready.
+                </p>
+                <Link href="/" className={styles.successCta}>
+                  Back to Siang
+                </Link>
+              </div>
+            ) : (
+              <>
+                <h1 className={styles.h1}>Claim your link</h1>
+                <p className={styles.subhead}>
+                  Tell us who you are and we&apos;ll reserve siang.co/yourname while the beta opens up.
+                </p>
+
+                <form onSubmit={onSubmit} className={styles.form} noValidate>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="name">
+                      Name
+                    </label>
+                    <input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Anong Vetchakul"
+                      className={styles.input}
+                      autoComplete="name"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="email">
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className={styles.input}
+                      autoComplete="email"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="handle">
+                      Instagram or handle (optional)
+                    </label>
+                    <input
+                      id="handle"
+                      type="text"
+                      value={handle}
+                      onChange={(e) => setHandle(e.target.value)}
+                      placeholder="@anong.ceramics"
+                      className={styles.input}
+                    />
+                  </div>
+
+                  {error && <p className={styles.error}>{error}</p>}
+
+                  <button type="submit" disabled={submitting} className={styles.submit}>
+                    {submitting ? "Sending…" : "Start free"}
+                  </button>
+                  <p className={styles.footnote}>Free to build. You only pay when you publish a work.</p>
+                </form>
+              </>
+            )}
           </div>
-        ) : (
-          <>
-            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Claim your link</h1>
-            <p className="mt-3 text-black/60">
-              Tell us who you are and we&apos;ll reserve siang.co/yourname while the beta opens up.
-            </p>
+        </div>
+      </main>
 
-            <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
-              <Field label="Name">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Anong Vetchakul"
-                  className="w-full rounded-xl border border-black/15 px-4 py-3 text-base outline-none focus:border-black/40"
-                  autoComplete="name"
-                />
-              </Field>
-
-              <Field label="Email">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full rounded-xl border border-black/15 px-4 py-3 text-base outline-none focus:border-black/40"
-                  autoComplete="email"
-                />
-              </Field>
-
-              <Field label="Instagram or handle (optional)">
-                <input
-                  type="text"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                  placeholder="@anong.ceramics"
-                  className="w-full rounded-xl border border-black/15 px-4 py-3 text-base outline-none focus:border-black/40"
-                />
-              </Field>
-
-              {error && <p className="text-sm text-red-600">{error}</p>}
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="mt-2 w-full rounded-full px-7 py-3.5 text-base font-semibold text-white transition disabled:opacity-60"
-                style={{ background: ACCENT }}
-              >
-                {submitting ? "Sending…" : "Start free"}
-              </button>
-              <p className="text-center text-xs text-black/40">
-                Free to build. You only pay when you publish a work.
-              </p>
-            </form>
-          </>
-        )}
-      </div>
-    </main>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block text-sm">
-      <span className="mb-1.5 block font-medium text-black/70">{label}</span>
-      {children}
-    </label>
+      <SiteFooter />
+    </div>
   );
 }

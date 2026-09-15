@@ -1,0 +1,124 @@
+/* ---------- Footer ---------- */
+.footer {
+  border-top: 1px solid var(--line-light);
+  padding: var(--space-8) var(--container-pad-sm) var(--space-7);
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+}
+.footerInner {
+  max-width: var(--container);
+  margin: 0 auto;
+}
+.footerInner a {
+  color: inherit;
+  text-decoration: none;
+}
+.footerInner a:hover {
+  color: var(--ink);
+}
+
+.footerLogo {
+  display: inline-flex;
+}
+.footerLogoImg {
+  height: 20px;
+  width: auto;
+}
+
+.footerColumns {
+  margin-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.footerColHeading {
+  font-size: var(--fs-caption);
+  font-weight: var(--w-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+.footerColLinks {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.footerColLinks li {
+  list-style: none;
+}
+.footerColLinks a {
+  font-size: var(--fs-small);
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.footerStores {
+  margin-top: var(--space-7);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.footerStorePill {
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-light);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+}
+
+.footerLegal {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line-light);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--ink-muted);
+}
+.footerLegal p:first-child {
+  font-weight: var(--w-bold);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.footerCopyright {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-light);
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+}
+
+@media (min-width: 640px) {
+  .footer {
+    padding: var(--space-8) var(--container-pad) var(--space-7);
+  }
+  .footerColumns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .footerLegal {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
+  }
+  .footerLegal p:first-child {
+    width: 100%;
+  }
+  .footerLegal p:not(:first-child)::after {
+    content: "\2022";
+    margin-left: var(--space-3);
+    color: var(--line-light);
+  }
+  .footerLegal p:last-child::after {
+    content: "";
+    margin-left: 0;
+  }
+}

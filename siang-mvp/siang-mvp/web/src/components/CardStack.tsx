@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import CardFace from "./CardFace";
 import { QR_GLYPH_BIG, USER_ICON } from "@/lib/icons";
@@ -93,9 +94,14 @@ export default function CardStack({ cards, onOpen, onScan }: Props) {
   return (
     <div className={styles.app}>
       <header className={styles.topbar}>
-        <div className={styles.count}>
-          {n} card{n === 1 ? "" : "s"} in Pocket
-        </div>
+        <Image
+          src="/siang-logo.png"
+          alt="Siang"
+          width={1899}
+          height={429}
+          className={styles.logo}
+          priority
+        />
         <Link href="/studio" className={styles.me} aria-label="Your studio">
           {USER_ICON}
         </Link>
