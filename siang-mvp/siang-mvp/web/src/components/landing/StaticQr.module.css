@@ -1,23 +1,23 @@
 .qrBox {
   display: inline-flex;
-  border-radius: 16px;
-  background: #fff;
-  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--white);
+  padding: var(--space-4);
 }
 .qrPlaceholder {
   width: 200px;
   height: 200px;
 }
 .label {
-  margin-top: 12px;
-  font-size: 14px;
-  color: #000;
+  margin-top: var(--space-3);
+  font-size: var(--fs-small);
+  color: var(--ink);
 }
 .openLink {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   display: inline-block;
-  font-size: 14px;
-  color: rgba(0, 0, 0, 0.6);
+  font-size: var(--fs-small);
+  color: var(--ink-muted);
   text-decoration: underline;
   text-underline-offset: 3px;
 }

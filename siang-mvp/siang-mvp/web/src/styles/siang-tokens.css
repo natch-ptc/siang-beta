@@ -1,0 +1,132 @@
+/* ============================================================
+   Siang design system tokens — LANDING PAGE ONLY.
+   Values copied verbatim from the authoritative design-system
+   export (tokens/colors.css, typography.css, spacing.css).
+   Scoped under `.siang` so nothing leaks into /mvp, /studio,
+   /login, /claim-your-link, which keep their own --ink/--hair
+   tokens defined in globals.css.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap");
+
+@font-face {
+  font-family: "Satoshi";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/Satoshi-Variable.ttf") format("truetype-variations"),
+       url("/fonts/Satoshi-Variable.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Satoshi";
+  font-style: italic;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/Satoshi-VariableItalic.ttf") format("truetype-variations"),
+       url("/fonts/Satoshi-VariableItalic.ttf") format("truetype");
+}
+@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 300; font-display: swap; src: url("/fonts/Satoshi-Light.otf") format("opentype"); }
+@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/Satoshi-Regular.otf") format("opentype"); }
+@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 500; font-display: swap; src: url("/fonts/Satoshi-Medium.otf") format("opentype"); }
+@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 700; font-display: swap; src: url("/fonts/Satoshi-Bold.otf") format("opentype"); }
+@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 900; font-display: swap; src: url("/fonts/Satoshi-Black.otf") format("opentype"); }
+@font-face { font-family: "Satoshi Static"; font-style: italic; font-weight: 400; font-display: swap; src: url("/fonts/Satoshi-Italic.otf") format("opentype"); }
+@font-face { font-family: "Satoshi Static"; font-style: italic; font-weight: 500; font-display: swap; src: url("/fonts/Satoshi-MediumItalic.otf") format("opentype"); }
+@font-face { font-family: "Satoshi Static"; font-style: italic; font-weight: 700; font-display: swap; src: url("/fonts/Satoshi-BoldItalic.otf") format("opentype"); }
+
+.siang {
+  /* ── Magenta ─────────────────────────────────────────── */
+  --magenta:        #C2397C;
+  --magenta-deep:   #A62F67;
+  --pink-pale:      #FBE3EE;
+  --pink-on-mag:    #FBDCEA;
+
+  /* ── Light ───────────────────────────────────────────── */
+  --paper:          #EDEDE8;
+  --white:          #FFFFFF;
+  --ink:            #111111;
+  --ink-muted:      #6B6B6B;
+  --line-light:     rgba(0, 0, 0, 0.14);
+
+  /* ── Dark ────────────────────────────────────────────── */
+  --black:          #000000;
+  --raised:         #161616;
+  --on-black:       #FFFFFF;
+  --on-black-muted: #8A8A8A;
+
+  --shadow-stack: 0 8px 24px -12px rgba(0, 0, 0, 0.28);
+  --shadow-sheet: 0 -8px 32px -16px rgba(0, 0, 0, 0.32);
+  --scrim: rgba(0, 0, 0, 0.45);
+
+  /* ── Radius ──────────────────────────────────────────── */
+  --radius-card:  16px;
+  --radius-panel: 24px;
+  --radius-sheet: 28px;
+  --radius-work:  14px;
+  --radius-pill:  999px;
+
+  --art-gradient: linear-gradient(180deg, var(--magenta) 0%, var(--magenta-deep) 100%);
+
+  /* ── Motion ──────────────────────────────────────────── */
+  --ease-out:  cubic-bezier(0.22, 0.61, 0.36, 1.00);
+  --ease-soft: cubic-bezier(0.32, 0.72, 0.24, 1.00);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+
+  /* ── Type ────────────────────────────────────────────── */
+  --font: "Satoshi", "Satoshi Static", "IBM Plex Sans Thai", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-thai: "IBM Plex Sans Thai", "Noto Sans Thai", "Satoshi", sans-serif;
+
+  --w-regular: 400;
+  --w-medium:  500;
+  --w-bold:    700;
+  --w-black:   900;
+
+  --fs-display:    72px;
+  --fs-display-sm: 40px;
+  --fs-h1:         44px;
+  --fs-h1-sm:      30px;
+  --fs-h2:         30px;
+  --fs-card:       20px;
+  --fs-card-sm:    18px;
+  --fs-body:       17px;
+  --fs-small:      15px;
+  --fs-caption:    13px;
+  --fs-button:     16px;
+
+  --lh-display: 1.0;
+  --lh-h1:      1.1;
+  --lh-h2:      1.15;
+  --lh-card:    1.25;
+  --lh-body:    1.55;
+  --lh-thai:    1.7;
+
+  --ls-display: -0.03em;
+  --ls-h1:      -0.02em;
+  --ls-normal:  0em;
+
+  /* ── Spacing / containers / controls ──────────────────── */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
+  --space-5: 20px;  --space-6: 24px;  --space-7: 32px;  --space-8: 40px;
+  --space-9: 56px;  --space-10: 72px; --space-11: 96px;
+
+  --container:        1200px;
+  --container-pad:      32px;
+  --container-pad-sm:   20px;
+  --measure:           680px;
+
+  --hit-min:  44px;
+  --chip-h:   46px;
+  --chip-pad-x: 20px;
+  --button-h: 52px;
+  --nav-h:    72px;
+
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.siang :lang(th) {
+  font-family: var(--font-thai);
+  line-height: var(--lh-thai);
+}

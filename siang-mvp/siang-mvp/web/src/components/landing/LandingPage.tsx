@@ -2,6 +2,7 @@ import Link from "next/link";
 import LandingHeader from "./LandingHeader";
 import ScanDemo from "./ScanDemo";
 import StaticQr from "./StaticQr";
+import "@/styles/siang-tokens.css";
 import styles from "./LandingPage.module.css";
 
 const PROBLEMS = [
@@ -38,7 +39,7 @@ const PLANS = [
 
 export default function LandingPage() {
   return (
-    <div className={styles.page}>
+    <div className={`siang ${styles.page}`}>
       <LandingHeader />
 
       {/* Hero */}
