@@ -165,7 +165,7 @@ export default function NowPlaying({ onOpenArtist, onShareWork }: Props) {
           >
             {artist.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img className={styles.avatar} src={artist.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img className={styles.avatar} src={artist.avatarUrl} alt="" style={{ objectFit: "cover" }} />
             ) : (
               <span className={styles.avatar} style={{ background: artist.cardBg, color: artist.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[artist.markId] ?? "" }} />
             )}

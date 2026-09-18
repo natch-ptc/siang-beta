@@ -10,11 +10,14 @@ export const OWNED: ArtistCard[] = [
     based: "Chiang Mai",
     country: "Thailand",
     addedAt: "2026-04-12T19:04",
-    cardBg: "linear-gradient(168deg,#C8497F,#B63878)",
+    // Fritz Boehmer, "Pa. German Bowl," c. 1939 — National Gallery of Art,
+    // Open Access (public domain). Scrim keeps the footer/plate text legible.
+    cardBg:
+      "linear-gradient(180deg, rgba(20,8,14,0.25), rgba(20,8,14,0.82)), url('/art/pa-german-bowl-boehmer.jpg') center/cover no-repeat",
     cardInk: "#FCE7F1",
     tint: "#B63878",
     markId: "anong",
-    avatarUrl: null,
+    avatarUrl: "/art/pa-german-bowl-boehmer.jpg",
     bio: "Throws thin celadon in a small studio near the Ping river. Every work is recorded inside the kiln while it fires.",
     geo: "18.7883,98.9853",
     joined: "Feb 2025",
@@ -24,11 +27,16 @@ export const OWNED: ArtistCard[] = [
       { kind: "email", value: "studio@anongvetchakul.com" },
       { kind: "web", value: "anongvetchakul.com" },
     ],
+    // Cover photos below are real open-access watercolors from the National
+    // Gallery of Art's Index of American Design (public domain), standing in
+    // for artist-uploaded photos: Annie B. Johnston, "Pottery Flat Bowl" (c.
+    // 1938); Sydney Roberts, "Pottery Jug" (c. 1941); Nicholas Amantea,
+    // "Crock" (c. 1936); Fritz Boehmer, "Pa. German Bowl" (c. 1939).
     art: [
-      { id: "still-water", code: "107919", title: "น้ำนิ่ง (Still Water)", durationLabel: "3:12", listenCount: 24810, showIndex: 0, description: "A shallow celadon basin, thrown thin enough that light passes through the rim. The recording is the kiln at hour eleven, when the glaze begins to move.", coverUrl: null },
-      { id: "clay-and-fire", code: "115838", title: "ดินกับไฟ (Clay and Fire)", durationLabel: "4:48", listenCount: 18240, showIndex: 0, description: "Two vessels fired in the same load, one pulled early. What you hear is the cooling, forty minutes compressed into five.", coverUrl: null },
-      { id: "sixth-bowl", code: "123757", title: "ถ้วยที่หก (Sixth Bowl)", durationLabel: "2:36", listenCount: 9615, showIndex: 1, description: "The sixth attempt at a form Anong had been circling for a year. She kept the crack and glazed over it.", coverUrl: null },
-      { id: "kiln-wind", code: "131676", title: "ลมในเตา (Kiln Wind)", durationLabel: "6:04", listenCount: 7302, showIndex: 1, description: "Air moving through the chamber before the fire is lit. Nothing is being made yet, which is the point.", coverUrl: null },
+      { id: "still-water", code: "107919", title: "น้ำนิ่ง (Still Water)", durationLabel: "3:12", listenCount: 24810, showIndex: 0, description: "A shallow celadon basin, thrown thin enough that light passes through the rim. The recording is the kiln at hour eleven, when the glaze begins to move.", coverUrl: "/art/pottery-flat-bowl-johnston.jpg" },
+      { id: "clay-and-fire", code: "115838", title: "ดินกับไฟ (Clay and Fire)", durationLabel: "4:48", listenCount: 18240, showIndex: 0, description: "Two vessels fired in the same load, one pulled early. What you hear is the cooling, forty minutes compressed into five.", coverUrl: "/art/pottery-jug-roberts.jpg" },
+      { id: "sixth-bowl", code: "123757", title: "ถ้วยที่หก (Sixth Bowl)", durationLabel: "2:36", listenCount: 9615, showIndex: 1, description: "The sixth attempt at a form Anong had been circling for a year. She kept the crack and glazed over it.", coverUrl: "/art/crock-amantea.jpg" },
+      { id: "kiln-wind", code: "131676", title: "ลมในเตา (Kiln Wind)", durationLabel: "6:04", listenCount: 7302, showIndex: 1, description: "Air moving through the chamber before the fire is lit. Nothing is being made yet, which is the point.", coverUrl: "/art/pa-german-bowl-boehmer.jpg" },
     ],
     shows: [
       { title: "น้ำนิ่ง (Still Water, Turning)", kind: "Solo", year: 2025, venue: "Gallery Seescape, Chiang Mai", geo: "18.7955,98.9722" },

@@ -1,41 +1,27 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Export, Play } from "@phosphor-icons/react/dist/ssr";
+import { EnvelopeSimple, Globe, InstagramLogo, ChatCircle, LinkSimple } from "@phosphor-icons/react/dist/ssr";
 import LandingHeader from "./LandingHeader";
 import SiteFooter from "./SiteFooter";
 import ScanDemo from "./ScanDemo";
 import StaticQr from "./StaticQr";
 import PrintQr from "./PrintQr";
+import HeroPieceCard from "./HeroPieceCard";
 import "@/styles/siang-tokens.css";
 import styles from "./LandingPage.module.css";
-
-// Hand-drawn line-art vessel icon (wide shallow bowl on a short pedestal),
-// used as the placeholder artwork thumbnail. Matches the house style in
-// lib/marks.ts — inline SVG, stroke="currentColor", no icon library.
-function VesselIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 100 96"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="50" cy="14" r="3" fill="currentColor" stroke="none" />
-      <path d="M20 30h60c0 22-10 34-30 34S20 52 20 30z" />
-      <path d="M50 64v10M38 82h24" />
-    </svg>
-  );
-}
 
 const PROBLEMS = [
   "A link in a bio goes nowhere, or it goes to a shop",
   "Adding sound has meant an installed audio guide, at a price independent artists never reach",
   "A visitor who liked the work has no way to follow the artist from the wall",
 ];
+
+const HUB_CONTACTS = [
+  { key: "ig", label: "Instagram", icon: InstagramLogo, href: "https://instagram.com/anong.clay" },
+  { key: "line", label: "LINE", icon: ChatCircle, href: "https://line.me/ti/p/~anong.clay" },
+  { key: "email", label: "Email", icon: EnvelopeSimple, href: "mailto:studio@anongvetchakul.com" },
+  { key: "web", label: "Website", icon: Globe, href: "https://anongvetchakul.com" },
+] as const;
 
 const HUB_WORKS = [
   { title: "น้ำนิ่ง (Still Water)", show: "Gallery Seascape" },
@@ -139,37 +125,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className={styles.heroCard}>
-            <div className={styles.heroCardTop}>
-              <span>ไทย · EN</span>
-              <Export size={16} weight="regular" aria-hidden="true" />
-            </div>
-            <div className={styles.heroCardBody}>
-              <div className={styles.heroThumb}>
-                <VesselIcon className={styles.heroThumbIcon} />
-              </div>
-              <dl className={styles.heroDl}>
-                <Row label="Audio" value="Anong, in English" />
-                <Row label="Text" value="340 words" />
-                <Row label="Image" value="2 photographs from the kiln" />
-                <p className={styles.heroBlurb}>
-                  Thrown thin in a small studio near the Ping river. Every work is recorded inside the kiln while it
-                  fires.
-                </p>
-                <p className={styles.heroMeta}>Gallery Seascape, Chiang Mai · 2025</p>
-              </dl>
-            </div>
-            <div className={styles.heroPlayer}>
-              <span className={styles.playBtn}>
-                <Play size={16} weight="fill" aria-hidden="true" />
-              </span>
-              <div>
-                <p className={styles.heroTrackTitle}>น้ำนิ่ง (Still Water)</p>
-                <p className={styles.heroTrackMeta}>Anong Vetchakul · 0:00 / 4:12</p>
-              </div>
-            </div>
-            <p className={styles.heroMadeWith}>Made with Siang</p>
-          </div>
+          <HeroPieceCard />
         </div>
       </section>
 
@@ -200,16 +156,24 @@ export default function LandingPage() {
                 siang.co/name holds a photo, a short bio, contact channels and every work you have published, grouped
                 by the show it came from. It replaces the link in your Instagram bio on day one.
               </p>
-              <a href="#pricing" className={styles.hubLink}>
+              <Link href="/mvp" className={styles.hubLink}>
                 See the Hub
-              </a>
+              </Link>
             </div>
 
             <div className={styles.hubCard}>
-              <p className={styles.hubHandle}>🔗 siang.co/anong</p>
+              <p className={styles.hubHandle}>
+                <LinkSimple size={14} weight="bold" aria-hidden="true" /> siang.co/anong
+              </p>
               <div className={styles.hubProfile}>
                 <span className={styles.hubAvatar}>
-                  <VesselIcon className={styles.hubAvatarIcon} />
+                  <Image
+                    src="/art/pottery-jug-roberts.jpg"
+                    alt="Watercolor study of a glazed stoneware jug, by Sydney Roberts, c. 1941"
+                    fill
+                    sizes="48px"
+                    className={styles.hubAvatarImg}
+                  />
                 </span>
                 <div>
                   <p className={styles.hubName}>Anong Vetchakul</p>
@@ -217,11 +181,18 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className={styles.hubBio}>Celadon and unglazed stoneware. Chiang Mai.</p>
+              <p className={styles.hubImageCredit}>
+                Sydney Roberts, <em>Pottery Jug</em>, c. 1941 —{" "}
+                <a href="https://www.nga.gov/artworks/18303-pottery-jug" target="_blank" rel="noopener noreferrer">
+                  National Gallery of Art, Open Access
+                </a>
+              </p>
               <div className={styles.hubChips}>
-                {["Instagram", "LINE", "Email", "Website"].map((c) => (
-                  <span key={c} className={styles.hubChip}>
-                    {c}
-                  </span>
+                {HUB_CONTACTS.map(({ key, label, icon: Icon, href }) => (
+                  <a key={key} href={href} target="_blank" rel="noopener noreferrer" className={styles.hubChip}>
+                    <Icon size={14} weight="regular" aria-hidden="true" />
+                    {label}
+                  </a>
                 ))}
               </div>
               <div className={styles.hubStats}>

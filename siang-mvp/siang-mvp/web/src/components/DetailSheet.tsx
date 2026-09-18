@@ -118,7 +118,7 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition,
             <div className={styles.dwho}>
               {card.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img className={styles.avatar} src={card.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img className={styles.avatar} src={card.avatarUrl} alt="" style={{ objectFit: "cover" }} />
               ) : (
                 <span className={styles.avatar} style={{ background: card.cardBg, color: card.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[card.markId] ?? "" }} />
               )}
