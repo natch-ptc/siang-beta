@@ -93,3 +93,18 @@ insert into exhibition_artworks (exhibition_id, artwork_id) values ('6a4f3431-f6
 insert into artworks (id, artist_id, slug, code, title, duration_sec, description, listen_count, sort_order) values ('0f87935d-77ca-42c2-b34c-b2048ef634f0', '7081116e-e666-4292-969b-05e8a6680389', 'glass-falling', '978795', 'Glass, Falling', 372, 'A failed piece, recorded as it broke. It is the only take.', 3155, 3);
 insert into exhibition_artworks (exhibition_id, artwork_id) values ('6a4f3431-f631-4a24-86a2-a8ba3e212ee1', '0f87935d-77ca-42c2-b34c-b2048ef634f0');
 commit;
+-- Real art for Anong (mirrors migrations/0008_anong_real_art.sql)
+update artists set
+  card_bg = 'linear-gradient(180deg, rgba(20,8,14,0.25), rgba(20,8,14,0.82)), url(''/art/pa-german-bowl-boehmer.jpg'') center/cover no-repeat',
+  card_ink = '#FCE7F1',
+  avatar_url = '/art/pa-german-bowl-boehmer.jpg'
+where slug = 'anong-vetchakul';
+
+update artworks set cover_url = case slug
+  when 'still-water'   then '/art/pottery-flat-bowl-johnston.jpg'
+  when 'clay-and-fire' then '/art/pottery-jug-roberts.jpg'
+  when 'sixth-bowl'    then '/art/crock-amantea.jpg'
+  when 'kiln-wind'     then '/art/pa-german-bowl-boehmer.jpg'
+end
+where artist_id = (select id from artists where slug = 'anong-vetchakul')
+  and slug in ('still-water', 'clay-and-fire', 'sixth-bowl', 'kiln-wind');
