@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
 import styles from "./StaticQr.module.css";
+import { BETA_PATH } from "@/lib/beta";
 
 /** Always-visible QR block for the dedicated "Scan it with your phone" section. */
 export default function StaticQr() {
@@ -14,7 +15,7 @@ export default function StaticQr() {
     setOrigin(window.location.origin);
   }, []);
 
-  const mvpUrl = origin ? `${origin}/mvp` : "/mvp";
+  const mvpUrl = origin ? `${origin}${BETA_PATH}` : BETA_PATH;
 
   return (
     <div>
@@ -25,8 +26,8 @@ export default function StaticQr() {
           <div className={styles.qrPlaceholder} />
         )}
       </div>
-      <p className={styles.label}>siang.co/demo</p>
-      <Link href="/mvp" className={styles.openLink}>
+      <p className={styles.label}>siang.co{BETA_PATH}</p>
+      <Link href={BETA_PATH} className={styles.openLink}>
         open it here
       </Link>
     </div>

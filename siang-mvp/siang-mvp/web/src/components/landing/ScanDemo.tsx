@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
 import styles from "./ScanDemo.module.css";
+import { BETA_PATH } from "@/lib/beta";
 
 /**
  * "Scan the demo" trigger button. Desktop visitors get a small popover with
@@ -30,7 +31,7 @@ export default function ScanDemo() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const mvpUrl = origin ? `${origin}/mvp` : "/mvp";
+  const mvpUrl = origin ? `${origin}${BETA_PATH}` : BETA_PATH;
 
   return (
     <div ref={wrapRef} className={styles.wrap}>
@@ -46,9 +47,9 @@ export default function ScanDemo() {
               <div className={styles.qrPlaceholder} />
             )}
           </div>
-          <p className={styles.label}>siang.co/demo</p>
+          <p className={styles.label}>siang.co{BETA_PATH}</p>
           <p className={styles.sub}>Opens with no app and no sign up</p>
-          <Link href="/mvp" className={styles.openLink}>
+          <Link href={BETA_PATH} className={styles.openLink}>
             open it here
           </Link>
         </div>

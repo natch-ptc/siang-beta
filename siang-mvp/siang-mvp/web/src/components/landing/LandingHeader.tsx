@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import styles from "./LandingHeader.module.css";
+import { BETA_PATH } from "@/lib/beta";
 
 export default function LandingHeader() {
   return (
@@ -16,7 +17,7 @@ export default function LandingHeader() {
           <a href="#pricing">Pricing</a>
         </nav>
         <div className={styles.actions}>
-          <Link href="/mvp" className={styles.login}>
+          <Link href={BETA_PATH} className={styles.login}>
             Log in
           </Link>
           <Link href="/claim-your-link" className={styles.cta}>

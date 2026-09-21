@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import styles from "./SiteFooter.module.css";
+import { BETA_PATH } from "@/lib/beta";
 
 const FOOTER_COLUMNS = [
   {
@@ -9,7 +10,7 @@ const FOOTER_COLUMNS = [
       { label: "Artist Hub", href: "/#artist-hub" },
       { label: "Piece Page", href: "/#piece-page" },
       { label: "Pricing", href: "/#pricing" },
-      { label: "The app", href: "/mvp" },
+      { label: "The app", href: BETA_PATH },
     ],
   },
   {

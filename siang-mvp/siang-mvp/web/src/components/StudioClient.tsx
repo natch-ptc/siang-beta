@@ -27,6 +27,7 @@ import {
 } from "@/lib/icons";
 import { QRCodeCanvas } from "qrcode.react";
 import { slugify } from "@/lib/slug";
+import { BETA_PATH } from "@/lib/beta";
 
 export type StudioArtist = {
   id: string;
@@ -109,14 +110,14 @@ export default function StudioClient({
 
   async function signOut() {
     await supabase.auth.signOut();
-    router.push("/mvp");
+    router.push(BETA_PATH);
     router.refresh();
   }
 
   return (
     <main style={styles.page}>
       <header style={styles.header}>
-        <Link href="/mvp" style={styles.back} aria-label="Back to Pocket">
+        <Link href={BETA_PATH} style={styles.back} aria-label="Back to Pocket">
           {BACK_CHEVRON_SVG}
         </Link>
         <div style={styles.headerRight}>
@@ -391,7 +392,7 @@ function ProfileEditor({
             <button style={styles.pillDk} onClick={copyLink} type="button">
               {LINK_ICON} {copied ? "Copied" : "Copy link"}
             </button>
-            <Link href="/mvp" style={styles.pillDk}>
+            <Link href={BETA_PATH} style={styles.pillDk}>
               View your page
             </Link>
             <button style={styles.pillDk} onClick={shareLink} type="button">

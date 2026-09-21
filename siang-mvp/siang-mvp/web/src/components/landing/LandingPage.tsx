@@ -9,6 +9,7 @@ import PrintQr from "./PrintQr";
 import HeroPieceCard from "./HeroPieceCard";
 import "@/styles/siang-tokens.css";
 import styles from "./LandingPage.module.css";
+import { BETA_PATH } from "@/lib/beta";
 
 const PROBLEMS = [
   "A link in a bio goes nowhere, or it goes to a shop",
@@ -156,7 +157,7 @@ export default function LandingPage() {
                 siang.co/name holds a photo, a short bio, contact channels and every work you have published, grouped
                 by the show it came from. It replaces the link in your Instagram bio on day one.
               </p>
-              <Link href="/mvp" className={styles.hubLink}>
+              <Link href={BETA_PATH} className={styles.hubLink}>
                 See the Hub
               </Link>
             </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { BACK_CHEVRON_SVG } from "@/lib/icons";
+import { BETA_PATH } from "@/lib/beta";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function LoginPage() {
   return (
     <main style={styles.page}>
       <div style={styles.card}>
-        <Link href="/mvp" style={styles.back} aria-label="Back to Pocket">
+        <Link href={BETA_PATH} style={styles.back} aria-label="Back to Pocket">
           {BACK_CHEVRON_SVG}
         </Link>
         <h1 style={styles.h1}>{mode === "signin" ? "Sign in" : "Create your studio"}</h1>
