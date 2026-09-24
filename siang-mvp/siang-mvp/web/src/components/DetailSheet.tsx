@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { MARKS } from "@/lib/marks";
 import { stamp } from "@/lib/format";
 import { usePlayer } from "@/lib/player";
 import { PIN, CHEV, CLOSE_GLYPH, SHARE_GLYPH, QR_GLYPH, BACK_GLYPH, contactIcon, contactLabel, contactHref } from "@/lib/icons";
@@ -120,7 +119,7 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition,
                 // eslint-disable-next-line @next/next/no-img-element
                 <img className={styles.avatar} src={card.avatarUrl} alt="" style={{ objectFit: "cover" }} />
               ) : (
-                <span className={styles.avatar} style={{ background: card.cardBg, color: card.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[card.markId] ?? "" }} />
+                <span className={styles.avatar} style={{ background: card.cardBg, color: card.cardInk }} />
               )}
               <div>
                 <h1 className={styles.dname}>{card.name}</h1>

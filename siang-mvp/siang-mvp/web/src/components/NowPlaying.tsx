@@ -4,7 +4,6 @@ import { useRef } from "react";
 import { usePlayer } from "@/lib/player";
 import { tintPair } from "@/lib/color";
 import { secs, clock } from "@/lib/format";
-import { MARKS } from "@/lib/marks";
 import {
   PIN,
   CHEVRON_DOWN_SVG,
@@ -167,7 +166,7 @@ export default function NowPlaying({ onOpenArtist, onShareWork }: Props) {
               // eslint-disable-next-line @next/next/no-img-element
               <img className={styles.avatar} src={artist.avatarUrl} alt="" style={{ objectFit: "cover" }} />
             ) : (
-              <span className={styles.avatar} style={{ background: artist.cardBg, color: artist.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[artist.markId] ?? "" }} />
+              <span className={styles.avatar} style={{ background: artist.cardBg, color: artist.cardInk }} />
             )}
             <span className={styles.t}>
               <b>{artist.name}</b>

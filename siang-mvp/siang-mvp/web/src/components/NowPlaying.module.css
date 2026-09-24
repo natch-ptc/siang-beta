@@ -258,13 +258,6 @@
   display: grid;
   place-items: center;
 }
-.avatar :global(svg) {
-  width: 62%;
-  height: auto;
-}
-.avatar :global(.blob) {
-  width: 78%;
-}
 .t b {
   display: block;
   font-family: "EB Garamond", "Noto Serif Thai", Georgia, serif;
