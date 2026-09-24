@@ -176,6 +176,18 @@ function Card({
   const drag = useRef({ sx: 0, sy: 0, dy: 0, moved: false, t0: 0, dragging: false });
 
   const depth = (index - active + n) % n;
+  // Initial stacking, rendered on the server too, so the first paint already
+  // has the active card in front. Without it every card sits at inset 0 in DOM
+  // order and the last one shows on top until layout() runs after hydration.
+  // translateY in % of the card's own height equals layout()'s px offset,
+  // since each card fills the stack.
+  const k = Math.min(depth, 5);
+  const initialStyle: React.CSSProperties = {
+    zIndex: 100 - depth,
+    transform: `translateY(${-OFF[k] * 100}%) scale(${SCALE[k]})`,
+    opacity: depth >= 5 ? 0 : OP[k],
+    pointerEvents: depth >= 5 ? "none" : "auto",
+  };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (busyRef.current || depth !== 0) return;
@@ -236,6 +248,7 @@ function Card({
         registerRef(el);
       }}
       className={styles.card}
+      style={initialStyle}
     >
       <CardFace card={card} />
       <button
