@@ -58,13 +58,6 @@
   display: grid;
   place-items: center;
 }
-.cov :global(svg) {
-  width: 55%;
-  height: auto;
-}
-.cov :global(.blob) {
-  width: 78%;
-}
 .t {
   flex: 1;
   min-width: 0;

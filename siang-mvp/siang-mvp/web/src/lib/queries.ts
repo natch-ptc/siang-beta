@@ -9,9 +9,9 @@ function monthYear(iso: string | null) {
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-// MARKS keys happen to be the first slug segment for every seeded artist
-// (e.g. "anong-vetchakul" -> "anong"). Falls back to an empty mark for
-// artists added later that don't have a hand-drawn glyph yet.
+// ART keys happen to be the first slug segment for every seeded artist
+// (e.g. "anong-vetchakul" -> "anong"). Falls back to a plain colour tile for
+// artists added later that don't have generated art yet.
 function markIdFromSlug(slug: string) {
   return slug.split("-")[0];
 }

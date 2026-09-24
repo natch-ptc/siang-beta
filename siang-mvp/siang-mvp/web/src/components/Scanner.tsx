@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { MARKS } from "@/lib/marks";
 import { usePlayer } from "@/lib/player";
 import { CLOSE_GLYPH } from "@/lib/icons";
 import type { ArtistCard, Artwork } from "@/lib/types";
@@ -216,7 +215,7 @@ export default function Scanner({ open, allCards, ownedSlugs, onClose, onAdd }: 
             // eslint-disable-next-line @next/next/no-img-element
             <img className={styles.foundCard} src={found.card.avatarUrl} alt="" style={{ width: 64, height: 64, objectFit: "cover" }} />
           ) : (
-            <div className={styles.foundCard} style={{ background: found.card.cardBg, color: found.card.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[found.card.markId] ?? "" }} />
+            <div className={styles.foundCard} style={{ background: found.card.cardBg, color: found.card.cardInk }} />
           )}
           <div className={styles.foundText}>
             <b>{found.card.name}</b>

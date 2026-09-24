@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-import { MARKS } from "@/lib/marks";
 import { shareInfo, type ShareTarget } from "@/lib/share";
 import { CHECK_ICON } from "@/lib/icons";
 import ArtworkPiece from "./ArtworkPiece";
@@ -104,7 +103,7 @@ function Cover({ target }: { target: ShareTarget }) {
       // eslint-disable-next-line @next/next/no-img-element
       <img className={styles.cov} src={target.artist.avatarUrl} alt="" style={{ objectFit: "cover" }} />
     ) : (
-      <span className={styles.cov} style={{ background: target.artist.cardBg, color: target.artist.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[target.artist.markId] ?? "" }} />
+      <span className={styles.cov} style={{ background: target.artist.cardBg, color: target.artist.cardInk }} />
     );
   }
   if (target.kind === "work") {
@@ -120,5 +119,5 @@ function Cover({ target }: { target: ShareTarget }) {
       />
     );
   }
-  return <span className={styles.cov} style={{ background: target.artist.cardBg, color: target.artist.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[target.artist.markId] ?? "" }} />;
+  return <span className={styles.cov} style={{ background: target.artist.cardBg, color: target.artist.cardInk }} />;
 }
