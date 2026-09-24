@@ -1,5 +1,5 @@
-// Shape mirrors the tables in supabase/migrations/0001_init.sql,
-// so swapping the mock data source for a real Supabase query is a drop-in change.
+// Shape mirrors the tables in supabase/migrations/0001_init.sql; rows are
+// mapped into it by rowToArtistCard in lib/queries.ts.
 
 export type Artwork = {
   id: string;

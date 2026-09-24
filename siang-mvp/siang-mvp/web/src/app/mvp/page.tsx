@@ -1,18 +1,25 @@
 import HomeClient from "@/components/HomeClient";
 import { createClient } from "@/lib/supabase/server";
 import { fetchArtists } from "@/lib/queries";
-import { OWNED } from "@/lib/mock-artists";
+import type { ArtistCard } from "@/lib/types";
 
 export default async function Home() {
   const supabase = await createClient();
-  let cards = OWNED;
+  let cards: ArtistCard[] | null = null;
   try {
-    const fetched = await fetchArtists(supabase);
-    if (fetched.length > 0) cards = fetched;
-  } catch {
-    // Supabase not reachable or not seeded yet — fall back to mock data
-    // rather than showing an empty stack.
+    cards = await fetchArtists(supabase);
+  } catch (error) {
+    // Show the failure instead of quietly serving stale data, so a broken
+    // database connection is noticed rather than hidden.
+    console.error("fetchArtists failed", error);
   }
 
+  if (!cards) {
+    return (
+      <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, textAlign: "center" }}>
+        <p>Couldn&apos;t load the artist cards. Please refresh in a moment.</p>
+      </main>
+    );
+  }
   return <HomeClient cards={cards} />;
 }
