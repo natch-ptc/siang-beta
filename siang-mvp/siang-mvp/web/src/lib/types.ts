@@ -1,5 +1,5 @@
-// Shape mirrors the tables in supabase/migrations/0001_init.sql,
-// so swapping the mock data source for a real Supabase query is a drop-in change.
+// Shape mirrors the tables in supabase/migrations/0001_init.sql; rows are
+// mapped into it by rowToArtistCard in lib/queries.ts.
 
 export type Artwork = {
   id: string;
@@ -35,7 +35,7 @@ export type ArtistCard = {
   cardBg: string; // css background (solid, gradient, or radial-gradient)
   cardInk: string;
   tint: string; // accent hex used to tint the player
-  markId: string; // key into MARKS
+  markId: string; // key into ART (lib/artwork-art.ts)
   avatarUrl: string | null; // artist-uploaded photo; falls back to the drawn mark when absent
   bio: string;
   geo: string;

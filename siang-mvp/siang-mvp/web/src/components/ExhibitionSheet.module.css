@@ -98,13 +98,6 @@
   display: grid;
   place-items: center;
 }
-.av :global(svg) {
-  width: 70%;
-  height: auto;
-}
-.av :global(.blob) {
-  width: 78%;
-}
 .exhArtist b {
   font-family: "EB Garamond", "Noto Serif Thai", Georgia, serif;
   font-weight: 500;

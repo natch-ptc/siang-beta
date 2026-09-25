@@ -1,6 +1,5 @@
 "use client";
 
-import { MARKS } from "@/lib/marks";
 import { usePlayer } from "@/lib/player";
 import { PIN, BACK_CHEVRON_SVG, SHARE_GLYPH, PLAY_BIG } from "@/lib/icons";
 import type { ArtistCard } from "@/lib/types";
@@ -51,7 +50,7 @@ export default function ExhibitionSheet({ artist, showIndex, onClose, onOpenArti
                     // eslint-disable-next-line @next/next/no-img-element
                     <img className={styles.av} src={artist.avatarUrl} alt="" style={{ objectFit: "cover" }} />
                   ) : (
-                    <span className={styles.av} style={{ background: artist.cardBg, color: artist.cardInk }} dangerouslySetInnerHTML={{ __html: MARKS[artist.markId] ?? "" }} />
+                    <span className={styles.av} style={{ background: artist.cardBg, color: artist.cardInk }} />
                   )}
                   <b>{artist.name}</b>
                 </button>
