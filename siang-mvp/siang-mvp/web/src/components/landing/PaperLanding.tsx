@@ -3,18 +3,13 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Sriracha } from "next/font/google";
 import styles from "./PaperLanding.module.css";
-
-// Marker-pen handwriting with Thai glyphs, for the note that reads like a quick doodle.
-const handwriting = Sriracha({ weight: "400", subsets: ["thai", "latin"] });
 
 type Paper = {
   tone: "pink" | "white";
   label: string;
   body: string[];
   sign?: { name: string; role?: string };
-  handwritten?: boolean;
   // Resting spot relative to the stage centre, as a fraction of the paper's size.
   x: number;
   y: number;
@@ -25,10 +20,15 @@ type Paper = {
 const PAPERS: Paper[] = [
   {
     tone: "white",
-    label: "From the team lead",
-    body: ["หัวหน้าทีมกำลังตั้งใจเขียนครับ"],
-    handwritten: true,
-    x: 0.08,
+    label: "From Petch",
+    body: [
+      "ช่วงที่ผ่านมาไป Museum ใช้ audio guide บ่อย ๆ เดิน Digital Exhibition เยอะ ๆ ก็เริ่มเคลิ้ม แต่ก็สงสัยว่าทำไม Artist ทุกคน ทำสิ่งนี้ ง่าย ๆ ไม่ได้นะ",
+      "เลยเริ่มโทรคุยกับ Artist & Curator คืนนั้นเลย จนเกิดเป็น “Siang” ด้วยเป้าหมายที่อยากให้ทั้งคนทำงานอาร์ต และคนดู แฮปปี้มากขึ้น!",
+      "ก่อนหน้านี้แอบรู้สึก เหมือนคนเจ้าชู้ ฝั่งหนึ่งก็ทำงาน Technology สุดตัว อีกฝั่งก็งาน Creative หลุดโลก เพื่อน ๆ เริ่มงง ว่าเราทำงานอะไรกันแน่ 555+",
+      "แต่ตอนนี้หน่ะ ฉันเองก็เป็นได้นะ Creative Technologist!",
+    ],
+    sign: { name: "Kunpoj, กันต์พจน์, เพชร (Petch)", role: "คนคิดค้น Siang.co / CEO / เบ๊" },
+    x: 0.03,
     y: -0.2,
     rot: 4,
   },
@@ -179,7 +179,7 @@ function PaperSheet({
       onPointerCancel={endDrag}
     >
       <div className={styles.label}>{paper.label}</div>
-      <div className={paper.handwritten ? `${styles.hand} ${handwriting.className}` : styles.body}>
+      <div className={styles.body}>
         {paper.body.map((line, i) => (
           <p key={i}>{line}</p>
         ))}
