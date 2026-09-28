@@ -3,10 +3,11 @@
 import { useRef, useState } from "react";
 import { clock, secs } from "@/lib/format";
 import { PAUSE_BIG, PLAY_BIG } from "@/lib/icons";
+import { noteHeard } from "@/lib/listens";
 import styles from "./WorkPage.module.css";
 
 // Play button + scrub bar for one work's sound on its public page.
-export default function WorkListen({ audioUrl, durationLabel }: { audioUrl: string; durationLabel: string }) {
+export default function WorkListen({ artworkId, audioUrl, durationLabel }: { artworkId: string; audioUrl: string; durationLabel: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -44,7 +45,11 @@ export default function WorkListen({ audioUrl, durationLabel }: { audioUrl: stri
         src={audioUrl}
         preload="metadata"
         onLoadedMetadata={(e) => Number.isFinite(e.currentTarget.duration) && setTotal(e.currentTarget.duration)}
-        onTimeUpdate={(e) => setElapsed(e.currentTarget.currentTime)}
+        onTimeUpdate={(e) => {
+          const t = e.currentTarget.currentTime;
+          setElapsed(t);
+          noteHeard(artworkId, t, total);
+        }}
         onPlaying={() => {
           setLoading(false);
           setPlaying(true);

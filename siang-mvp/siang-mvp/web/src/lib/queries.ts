@@ -119,6 +119,7 @@ function rowToArtistCard(row: Row): ArtistCard {
       const exhibitionId = w.exhibition_artworks[0]?.exhibition_id;
       return {
         id: w.slug,
+        dbId: w.id,
         code: w.code,
         title: w.title,
         durationLabel: clock(w.duration_sec ?? 0),
@@ -131,7 +132,7 @@ function rowToArtistCard(row: Row): ArtistCard {
     });
 
   const contacts: Contact[] = row.artist_contacts.map((c) => ({ kind: c.kind, value: c.value }));
-  const monthlyListeners = art.reduce((sum, w) => sum + w.listenCount, 0);
+  const totalListens = art.reduce((sum, w) => sum + w.listenCount, 0);
 
   return {
     id: row.id,
@@ -148,7 +149,7 @@ function rowToArtistCard(row: Row): ArtistCard {
     bio: row.bio ?? "",
     geo: geoQuery(row.lat, row.lng, [row.based, row.country].filter(Boolean).join(", ")),
     joined: monthYear(row.joined_at),
-    monthlyListeners,
+    totalListens,
     contacts,
     art,
     shows,

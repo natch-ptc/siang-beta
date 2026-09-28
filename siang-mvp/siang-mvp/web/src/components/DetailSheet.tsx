@@ -140,7 +140,7 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition,
 
             <div className={styles.dmeta}>
               <div className={styles.dmetaRow}>
-                <b>{card.monthlyListeners.toLocaleString()} listens this month</b>
+                <b>{card.totalListens.toLocaleString()} listens</b>
                 <button
                   className={styles.mappill}
                   onClick={() => window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(card.geo), "_blank", "noopener")}

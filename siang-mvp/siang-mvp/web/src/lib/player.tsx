@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { secs } from "./format";
+import { noteHeard } from "./listens";
 import type { ArtistCard, Artwork } from "./types";
 
 export type QueueKind = "artist" | "exhibition";
@@ -83,7 +84,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!audioRef.current) {
       const a = new Audio();
       a.preload = "auto";
-      a.addEventListener("timeupdate", () => setElapsed(Math.floor(a.currentTime)));
+      a.addEventListener("timeupdate", () => {
+        setElapsed(Math.floor(a.currentTime));
+        const w = workAt(queueRef.current);
+        const total = Number.isFinite(a.duration) ? a.duration : w ? secs(w.durationLabel) : 0;
+        if (w?.audioUrl) noteHeard(w.dbId, a.currentTime, total);
+      });
       a.addEventListener("ended", () => {
         if (repeatRef.current) {
           a.currentTime = 0;

@@ -2,7 +2,8 @@
 // mapped into it by rowToArtistCard in lib/queries.ts.
 
 export type Artwork = {
-  id: string;
+  id: string; // the work's slug, used in its URL (siang.co/<artist>/<id>)
+  dbId: string; // artworks.id — what listens are counted against
   code: string; // six-digit code printed under the work's QR — see 0001_init.sql's makeCode()
   title: string;
   durationLabel: string; // "3:12"
@@ -41,7 +42,7 @@ export type ArtistCard = {
   bio: string;
   geo: string;
   joined: string; // "Feb 2025"
-  monthlyListeners: number;
+  totalListens: number;
   contacts: Contact[];
   art: Artwork[];
   shows: Exhibition[];

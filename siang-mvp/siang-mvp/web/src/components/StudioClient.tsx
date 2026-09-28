@@ -597,7 +597,7 @@ function ArtistPage({
 
           <div className={ds.dmeta}>
             <div className={ds.dmetaRow}>
-              <b>{listens.toLocaleString()} listens this month</b>
+              <b>{listens.toLocaleString()} listens</b>
               {artist.based && (
                 <span className={ds.mappill}>
                   {PIN}
@@ -681,7 +681,7 @@ function ArtistPage({
       <div className={st.doneBar}>
         <span className={st.doneNote}>✓ Changes save as you go</span>
         <Link href={`/${artist.slug}`} className={st.doneBtn}>
-          Done · view my page
+          Done
         </Link>
       </div>
 

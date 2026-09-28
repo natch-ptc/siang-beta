@@ -68,7 +68,7 @@ export default function ArtistPublicView({ artist, links }: { artist: ArtistCard
 
           <div className={ds.dmeta}>
             <div className={ds.dmetaRow}>
-              <b>{artist.monthlyListeners.toLocaleString()} listens this month</b>
+              <b>{artist.totalListens.toLocaleString()} listens</b>
               {artist.based && (
                 <a
                   className={ds.mappill}

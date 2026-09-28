@@ -67,7 +67,7 @@ export default async function WorkPage({ params }: Props) {
           </Link>
 
           {work.audioUrl ? (
-            <WorkListen audioUrl={work.audioUrl} durationLabel={work.durationLabel} />
+            <WorkListen artworkId={work.dbId} audioUrl={work.audioUrl} durationLabel={work.durationLabel} />
           ) : (
             <p className={styles.noSound}>This work&apos;s sound isn&apos;t online yet.</p>
           )}
