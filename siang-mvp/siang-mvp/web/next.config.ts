@@ -30,7 +30,11 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    return [{ source: betaPath, destination: "/mvp" }];
+    return [
+      { source: betaPath, destination: "/mvp" },
+      // siang.co/app is the artist's own space: the studio (which sends signed-out visitors to /login).
+      { source: "/app", destination: "/studio" },
+    ];
   },
 };
 

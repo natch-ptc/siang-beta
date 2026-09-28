@@ -69,6 +69,13 @@ export default function JoinBeta() {
                 <p className={styles.lead}>
                   ขอบคุณที่สนใจนะ เราจะติดต่อไปที่ <strong>{done.email}</strong> เมื่อเปิดให้ทดลอง
                 </p>
+                <p className={styles.lead}>ถ้าเป็นศิลปิน สร้างหน้าของคุณบน Siang ได้เลยตอนนี้</p>
+                <Link
+                  href={`/login?mode=signup&email=${encodeURIComponent(done.email)}`}
+                  className={`${frame.cta} ${frame.ctaBrand} ${styles.submit}`}
+                >
+                  Create your artist page
+                </Link>
               </div>
             ) : (
               <form onSubmit={onSubmit} className={styles.form} noValidate>

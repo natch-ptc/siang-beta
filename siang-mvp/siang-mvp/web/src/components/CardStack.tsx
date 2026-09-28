@@ -107,7 +107,7 @@ export default function CardStack({ cards, onOpen, onScan }: Props) {
           className={styles.logo}
           priority
         />
-        <Link href="/studio" className={styles.me} aria-label="Your studio">
+        <Link href="/app" className={styles.me} aria-label="Your studio">
           {USER_ICON}
         </Link>
       </header>

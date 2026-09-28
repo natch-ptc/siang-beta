@@ -36,6 +36,8 @@ import {
   LinkSimple,
   DotsThreeVertical,
   DownloadSimple,
+  Eye,
+  EyeSlash,
 } from "@phosphor-icons/react/dist/ssr";
 
 export const PIN = <MapPin size={13} weight="fill" />;
@@ -72,6 +74,8 @@ export const TEXT_ICON = <TextAlignLeft size={16} weight="regular" />;
 export const LINK_ICON = <LinkSimple size={15} weight="regular" />;
 export const KEBAB_ICON = <DotsThreeVertical size={18} weight="bold" />;
 export const DOWNLOAD_ICON = <DownloadSimple size={15} weight="regular" />;
+export const EYE_ICON = <Eye size={18} weight="regular" />;
+export const EYE_SLASH_ICON = <EyeSlash size={18} weight="regular" />;
 
 const CONTACT_ICON: Record<string, React.ReactNode> = {
   ig: <InstagramLogo size={14} weight="regular" />,
