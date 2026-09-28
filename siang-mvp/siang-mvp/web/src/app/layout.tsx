@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+// What link previews (LINE, Facebook, Messenger…) show for siang.co. Artist,
+// work and exhibition pages set their own title and description; the Open
+// Graph fields here only add the site name and language, so previews of those
+// pages fall back to their own title and description.
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.siang.co"),
   title: "Siang.co ศิลปะฟังได้",
-  description: "Artist cards, ported to Next.js + Supabase",
+  description: "ฟังเสียงของงานศิลปะ และเรื่องเล่าจากศิลปินเจ้าของผลงาน · Art you can hear, told by the artists who made it.",
+  openGraph: { siteName: "Siang.co", locale: "th_TH", type: "website" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
