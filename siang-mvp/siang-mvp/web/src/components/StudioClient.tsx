@@ -30,7 +30,7 @@ import {
   contactLabel,
 } from "@/lib/icons";
 import { QRCodeCanvas } from "qrcode.react";
-import { slugify } from "@/lib/slug";
+import { slugify, slugProblem, SLUG_MAX } from "@/lib/slug";
 import { BETA_PATH } from "@/lib/beta";
 import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg } from "@/lib/card-cover";
 import CardFace from "./CardFace";
@@ -165,6 +165,9 @@ function CreateProfile() {
   const router = useRouter();
   const supabase = createClient();
   const [name, setName] = useState("");
+  // Follows the name until the artist types their own link (a Thai name has no Latin slug to suggest).
+  const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
   const [discipline, setDiscipline] = useState("");
   const [based, setBased] = useState("");
   const [country, setCountry] = useState("");
@@ -174,8 +177,13 @@ function CreateProfile() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
+    const problem = slugProblem(slug);
+    if (problem) {
+      setError(`Your link: ${problem}`);
+      return;
+    }
+    setBusy(true);
 
     const {
       data: { user },
@@ -188,7 +196,7 @@ function CreateProfile() {
 
     const { error } = await supabase.from("artists").insert({
       user_id: user.id,
-      slug: slugify(name) || `artist-${Date.now()}`,
+      slug,
       name,
       discipline: discipline || null,
       based: based || null,
@@ -199,7 +207,7 @@ function CreateProfile() {
 
     setBusy(false);
     if (error) {
-      setError(error.message);
+      setError(slugTakenMessage(error.message, error.code));
       return;
     }
     router.refresh();
@@ -211,8 +219,24 @@ function CreateProfile() {
       <p style={styles.sub}>This becomes your public card on Pocket. You can add a card photo right after.</p>
       <form onSubmit={submit} style={styles.form}>
         <Field label="Name">
-          <input style={styles.input} required value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            style={styles.input}
+            required
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (!slugTouched) setSlug(slugify(e.target.value).slice(0, SLUG_MAX));
+            }}
+          />
         </Field>
+        <SlugField
+          value={slug}
+          onChange={(v) => {
+            setSlugTouched(true);
+            setSlug(v);
+          }}
+        />
+        <p style={{ ...styles.hint, marginTop: -6 }}>Your page and QR codes use this address. English letters, numbers and dashes.</p>
         <Field label="Discipline">
           <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} placeholder="e.g. Ceramics" />
         </Field>
@@ -657,6 +681,13 @@ function ArtistPage({
         </div>
       </div>
 
+      <div className={st.doneBar}>
+        <span className={st.doneNote}>✓ Changes save as you go</span>
+        <Link href={`/${artist.slug}`} className={st.doneBtn}>
+          Done · view my page
+        </Link>
+      </div>
+
       {sheet === "profile" && (
         <Sheet title="Edit your details" onClose={() => setSheet(null)}>
           <EditProfileForm artist={artist} contacts={contacts} onDone={() => setSheet(null)} onEditLinks={() => setSheet("links")} />
@@ -731,6 +762,7 @@ function EditProfileForm({
   const router = useRouter();
   const supabase = createClient();
   const [name, setName] = useState(artist.name);
+  const [slug, setSlug] = useState(artist.slug);
   const [discipline, setDiscipline] = useState(artist.discipline ?? "");
   const [based, setBased] = useState(artist.based ?? "");
   const [country, setCountry] = useState(artist.country ?? "");
@@ -741,6 +773,7 @@ function EditProfileForm({
   const [web, setWeb] = useState(contactValue(contacts, "web"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const slugChanged = slug !== artist.slug;
 
   async function save() {
     setError(null);
@@ -754,12 +787,18 @@ function EditProfileForm({
       setError("Check the email address. It needs an @ and a domain.");
       return;
     }
+    const problem = slugChanged ? slugProblem(slug) : null;
+    if (problem) {
+      setError(`Your link: ${problem}`);
+      return;
+    }
 
     setBusy(true);
     const { error: updateError } = await supabase
       .from("artists")
       .update({
         name: trimmedName,
+        slug,
         discipline: discipline.trim() || null,
         based: based.trim() || null,
         country: country.trim() || null,
@@ -768,7 +807,7 @@ function EditProfileForm({
       .eq("id", artist.id);
     if (updateError) {
       setBusy(false);
-      setError(updateError.message);
+      setError(slugTakenMessage(updateError.message, updateError.code));
       return;
     }
 
@@ -793,7 +832,12 @@ function EditProfileForm({
       <Field label="Name">
         <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <p style={styles.hint}>Your link stays siang.co/{artist.slug}, even if you change your name.</p>
+      <SlugField value={slug} onChange={setSlug} />
+      <p style={{ ...styles.hint, marginTop: -6, color: slugChanged ? "#FF6FA5" : undefined }}>
+        {slugChanged
+          ? `QR codes and links you already shared point to siang.co/${artist.slug} and will stop working.`
+          : "Changing your name doesn't change your link."}
+      </p>
       <div style={styles.row}>
         <Field label="Discipline">
           <input style={{ ...styles.input, minWidth: 0 }} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
@@ -1524,6 +1568,32 @@ function NewExhibitionForm({
   );
 }
 
+// "siang.co/[slug]" input: lowercases and swaps spaces for dashes as you type.
+function SlugField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <label style={styles.label}>
+      Your link
+      <span style={styles.slugWrap}>
+        <span style={styles.slugPrefix}>siang.co/</span>
+        <input
+          style={styles.slugInput}
+          value={value}
+          maxLength={SLUG_MAX}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="your-name"
+          onChange={(e) => onChange(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
+        />
+      </span>
+    </label>
+  );
+}
+
+function slugTakenMessage(message: string, code?: string) {
+  return code === "23505" || /duplicate key|artists_slug_key/i.test(message) ? "Someone already has that link. Try another." : message;
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label style={styles.label}>
@@ -1582,6 +1652,28 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
+  },
+  slugWrap: {
+    display: "flex",
+    alignItems: "center",
+    height: 42,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.06)",
+    overflow: "hidden",
+  },
+  slugPrefix: { padding: "0 2px 0 12px", fontSize: 14.5, fontWeight: 400, color: "rgba(255,255,255,.5)" },
+  slugInput: {
+    flex: 1,
+    minWidth: 0,
+    height: "100%",
+    border: 0,
+    outline: "none",
+    background: "none",
+    color: "#fff",
+    padding: "0 12px 0 0",
+    fontSize: 14.5,
+    fontFamily: "inherit",
   },
   darkCard: {
     background: "#161617",

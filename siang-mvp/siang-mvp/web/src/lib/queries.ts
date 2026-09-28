@@ -54,21 +54,38 @@ type Row = {
   }[];
 };
 
+const ARTIST_SELECT = `
+  id, slug, name, based, country, lat, lng, bio, card_bg, card_ink, card_tint, avatar_url, joined_at,
+  artist_contacts ( kind, value ),
+  exhibitions ( id, title, kind, year, venue, lat, lng ),
+  artworks ( id, slug, code, title, duration_sec, description, cover_url, listen_count, sort_order, exhibition_artworks ( exhibition_id ) )
+`;
+
 export async function fetchArtists(supabase: SupabaseClient): Promise<ArtistCard[]> {
-  const { data, error } = await supabase
-    .from("artists")
-    .select(
-      `
-      id, slug, name, based, country, lat, lng, bio, card_bg, card_ink, card_tint, avatar_url, joined_at,
-      artist_contacts ( kind, value ),
-      exhibitions ( id, title, kind, year, venue, lat, lng ),
-      artworks ( id, slug, code, title, duration_sec, description, cover_url, listen_count, sort_order, exhibition_artworks ( exhibition_id ) )
-    `
-    )
-    .order("name");
+  const { data, error } = await supabase.from("artists").select(ARTIST_SELECT).order("name");
 
   if (error) throw error;
   return (data as unknown as Row[]).map(rowToArtistCard);
+}
+
+export type ArtistLink = { label: string; url: string };
+
+// One artist for their public page (siang.co/<slug>), with their Linktree-style links.
+export async function fetchArtistBySlug(
+  supabase: SupabaseClient,
+  slug: string
+): Promise<{ artist: ArtistCard; links: ArtistLink[] } | null> {
+  const { data, error } = await supabase
+    .from("artists")
+    .select(`${ARTIST_SELECT}, artist_links ( label, url, sort_order )`)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as unknown as Row & { artist_links: (ArtistLink & { sort_order: number })[] };
+  const links = [...row.artist_links].sort((a, b) => a.sort_order - b.sort_order).map(({ label, url }) => ({ label, url }));
+  return { artist: rowToArtistCard(row), links };
 }
 
 function rowToArtistCard(row: Row): ArtistCard {
