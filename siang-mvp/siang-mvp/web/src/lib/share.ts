@@ -1,4 +1,3 @@
-import { slugify } from "./slug";
 import type { ArtistCard, Artwork } from "./types";
 
 export type ShareTarget =
@@ -27,11 +26,10 @@ export function shareInfo(target: ShareTarget) {
   }
   const { artist, showIndex } = target;
   const show = artist.shows[showIndex];
-  const showSlug = slugify(show.title) || `show-${showIndex + 1}`;
   return {
     title: show.title,
     subtitle: artist.name,
-    url: `https://siang.co/${artist.slug}/shows/${showSlug}`,
-    file: `siang-${artist.slug}-${showSlug}`,
+    url: `https://siang.co/${artist.slug}/shows/${show.slug}`,
+    file: `siang-${artist.slug}-${show.slug}`,
   };
 }

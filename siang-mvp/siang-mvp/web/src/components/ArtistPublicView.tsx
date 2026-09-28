@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import CardFace from "@/components/CardFace";
 import { BETA_PATH } from "@/lib/beta";
-import { LINK_ICON, PIN, contactHref, contactIcon, contactLabel } from "@/lib/icons";
+import { CHEV, LINK_ICON, PIN, contactHref, contactIcon, contactLabel } from "@/lib/icons";
 import type { ArtistLink } from "@/lib/queries";
 import type { ArtistCard } from "@/lib/types";
 // The public page looks like the artist's card detail in the app.
@@ -127,8 +127,8 @@ export default function ArtistPublicView({ artist, links }: { artist: ArtistCard
                   </span>
                 </div>
                 {artist.shows.map((sh) => (
-                  <div className={ds.show} key={sh.title}>
-                    <div className={ds.showHead}>
+                  <div className={ds.show} key={sh.slug}>
+                    <Link href={`/${artist.slug}/shows/${sh.slug}`} className={ds.showHead}>
                       <span className={ds.t}>
                         <em>{sh.title}</em>
                         <span className={ds.loc}>
@@ -138,7 +138,8 @@ export default function ArtistPublicView({ artist, links }: { artist: ArtistCard
                           </span>
                         </span>
                       </span>
-                    </div>
+                      <span className={ds.more}>{CHEV}</span>
+                    </Link>
                   </div>
                 ))}
               </section>

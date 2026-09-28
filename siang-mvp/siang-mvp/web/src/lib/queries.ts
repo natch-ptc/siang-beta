@@ -33,6 +33,7 @@ type Row = {
   artist_contacts: { kind: Contact["kind"]; value: string }[];
   exhibitions: {
     id: string;
+    slug: string;
     title: string;
     kind: "solo" | "group";
     year: number | null;
@@ -58,7 +59,7 @@ type Row = {
 const ARTIST_SELECT = `
   id, slug, name, based, country, lat, lng, bio, card_bg, card_ink, card_tint, avatar_url, joined_at,
   artist_contacts ( kind, value ),
-  exhibitions ( id, title, kind, year, venue, lat, lng ),
+  exhibitions ( id, slug, title, kind, year, venue, lat, lng ),
   artworks ( id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order, exhibition_artworks ( exhibition_id ) )
 `;
 
@@ -100,6 +101,7 @@ function rowToArtistCard(row: Row): ArtistCard {
   const shows: Exhibition[] = [...row.exhibitions]
     .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
     .map((sh) => ({
+      slug: sh.slug,
       title: sh.title,
       kind: sh.kind === "solo" ? "Solo" : "Group",
       year: sh.year ?? 0,

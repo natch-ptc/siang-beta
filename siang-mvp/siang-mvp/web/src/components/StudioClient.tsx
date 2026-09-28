@@ -84,6 +84,7 @@ export type StudioContact = {
 
 export type StudioExhibition = {
   id: string;
+  slug: string;
   title: string;
   kind: "solo" | "group";
   year: number | null;
@@ -388,7 +389,8 @@ function ArtistPage({
     description: string;
     exhibitionId: string | null;
   }) {
-    const slug = slugify(fields.title) || `work-${Date.now()}`;
+    const base = slugify(fields.title);
+    const slug = base && base !== "shows" ? base : `work-${Date.now()}`;
     const { data, error } = await supabase
       .from("artworks")
       .insert({
@@ -437,13 +439,16 @@ function ArtistPage({
     return null;
   }
 
-  async function createExhibition(title: string, venue: string, year: number, kind: "solo" | "group", workIds: string[]) {
+  async function createExhibition(title: string, slug: string, venue: string, year: number, kind: "solo" | "group", workIds: string[]) {
     const { data, error } = await supabase
       .from("exhibitions")
-      .insert({ artist_id: artist.id, title, venue, year, kind })
-      .select("id, title, kind, year, venue, cover_url")
+      .insert({ artist_id: artist.id, slug, title, venue, year, kind })
+      .select("id, slug, title, kind, year, venue, cover_url")
       .single();
-    if (error || !data) return { error: error?.message ?? "Could not create the exhibition." };
+    if (error || !data) {
+      const taken = error?.code === "23505";
+      return { error: taken ? "You already have an exhibition with that link. Try another." : error?.message ?? "Could not create the exhibition." };
+    }
 
     let linkedIds: string[] = [];
     if (workIds.length) {
@@ -653,7 +658,11 @@ function ArtistPage({
                     <div className={ds.showHead}>
                       <ShowCoverButton show={sh} onChange={updateShowCover} />
                       <span className={ds.t}>
-                        <em>{sh.title}</em>
+                        <em>
+                          <a href={`/${artist.slug}/shows/${sh.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }}>
+                            {sh.title}
+                          </a>
+                        </em>
                         <span className={ds.loc}>
                           {PIN}
                           <span>
@@ -1466,6 +1475,7 @@ function NewExhibitionForm({
   works: StudioArtwork[];
   onSubmit: (
     title: string,
+    slug: string,
     venue: string,
     year: number,
     kind: "solo" | "group",
@@ -1473,6 +1483,9 @@ function NewExhibitionForm({
   ) => Promise<{ error?: string }>;
 }) {
   const [title, setTitle] = useState("");
+  // Follows the title's English part until edited; a Thai-only title needs one typed.
+  const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
   const [venue, setVenue] = useState("");
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [kind, setKind] = useState<"solo" | "group">("solo");
@@ -1501,9 +1514,13 @@ function NewExhibitionForm({
       setError("Add where it is shown, so visitors can find it.");
       return;
     }
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 60) {
+      setError("Give the exhibition a link in English letters, numbers and dashes, like still-water.");
+      return;
+    }
     const y = +year;
     setBusy(true);
-    const result = await onSubmit(t, v, y > 1900 ? y : new Date().getFullYear(), kind, [...checked]);
+    const result = await onSubmit(t, slug, v, y > 1900 ? y : new Date().getFullYear(), kind, [...checked]);
     setBusy(false);
     if (result.error) setError(result.error);
   }
@@ -1511,8 +1528,35 @@ function NewExhibitionForm({
   return (
     <form style={{ ...styles.form, marginBottom: 18 }} onSubmit={submit}>
       <Field label="Title">
-        <input style={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ชื่อนิทรรศการ" />
+        <input
+          style={styles.input}
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (!slugTouched) setSlug(slugify(e.target.value).slice(0, 60));
+          }}
+          placeholder="ชื่อนิทรรศการ"
+        />
       </Field>
+      <label style={styles.label}>
+        Link
+        <span style={styles.slugWrap}>
+          <span style={styles.slugPrefix}>…/shows/</span>
+          <input
+            style={styles.slugInput}
+            value={slug}
+            maxLength={60}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="still-water"
+            onChange={(e) => {
+              setSlugTouched(true);
+              setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
+            }}
+          />
+        </span>
+      </label>
       <Field label="Where it's shown">
         <input style={styles.input} value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Gallery or venue, city" />
       </Field>

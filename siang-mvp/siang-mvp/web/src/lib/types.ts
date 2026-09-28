@@ -15,6 +15,7 @@ export type Artwork = {
 };
 
 export type Exhibition = {
+  slug: string; // its address: siang.co/<artist>/shows/<slug>
   title: string;
   kind: "Solo" | "Group";
   year: number;
