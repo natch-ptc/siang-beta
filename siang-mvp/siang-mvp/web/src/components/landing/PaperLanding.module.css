@@ -107,6 +107,7 @@
   position: relative;
   z-index: 6;
   display: flex;
+  gap: 8px;
   padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
 }
 
@@ -128,6 +129,12 @@
 .cta:active {
   transform: scale(0.96);
   background: #1c1c1c;
+}
+.ctaBrand {
+  background: var(--magenta);
+}
+.ctaBrand:active {
+  background: var(--magenta-deep);
 }
 
 .hint {
