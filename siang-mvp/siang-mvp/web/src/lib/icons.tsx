@@ -38,6 +38,7 @@ import {
   DownloadSimple,
   Eye,
   EyeSlash,
+  CaretUp,
 } from "@phosphor-icons/react/dist/ssr";
 
 export const PIN = <MapPin size={13} weight="fill" />;
@@ -75,6 +76,8 @@ export const LINK_ICON = <LinkSimple size={15} weight="regular" />;
 export const KEBAB_ICON = <DotsThreeVertical size={18} weight="bold" />;
 export const DOWNLOAD_ICON = <DownloadSimple size={15} weight="regular" />;
 export const EYE_ICON = <Eye size={18} weight="regular" />;
+export const UP_ICON = <CaretUp size={14} weight="bold" />;
+export const DOWN_ICON = <CaretDown size={14} weight="bold" />;
 export const EYE_SLASH_ICON = <EyeSlash size={18} weight="regular" />;
 
 const CONTACT_ICON: Record<string, React.ReactNode> = {

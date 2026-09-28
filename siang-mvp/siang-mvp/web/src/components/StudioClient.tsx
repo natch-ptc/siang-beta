@@ -19,15 +19,25 @@ import {
   VIDEO_ICON,
   TEXT_ICON,
   LINK_ICON,
-  KEBAB_ICON,
   DOWNLOAD_ICON,
   SHARE_GLYPH,
   QR_GLYPH,
+  UP_ICON,
+  DOWN_ICON,
+  PIN,
   contactIcon,
+  contactHref,
+  contactLabel,
 } from "@/lib/icons";
 import { QRCodeCanvas } from "qrcode.react";
 import { slugify } from "@/lib/slug";
 import { BETA_PATH } from "@/lib/beta";
+import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg } from "@/lib/card-cover";
+import CardFace from "./CardFace";
+import Spinner from "./Spinner";
+// The Studio reuses the detail sheet's styles so the artist edits their page as visitors see it.
+import ds from "./DetailSheet.module.css";
+import st from "./Studio.module.css";
 
 export type StudioArtist = {
   id: string;
@@ -38,6 +48,17 @@ export type StudioArtist = {
   country: string | null;
   bio: string | null;
   avatar_url: string | null;
+  card_bg: string;
+  card_ink: string;
+  card_tint: string;
+  joined_at: string | null;
+};
+
+export type StudioLink = {
+  id: string;
+  label: string;
+  url: string;
+  sort_order: number;
 };
 
 export type StudioArtwork = {
@@ -96,17 +117,17 @@ export default function StudioClient({
   works,
   contacts,
   shows,
+  links,
 }: {
   email: string;
   artist: StudioArtist | null;
   works: StudioArtwork[];
   contacts: StudioContact[];
   shows: StudioExhibition[];
+  links: StudioLink[];
 }) {
   const router = useRouter();
   const supabase = createClient();
-  const [composing, setComposing] = useState(false);
-  const [addingExhibition, setAddingExhibition] = useState(false);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -114,38 +135,30 @@ export default function StudioClient({
     router.refresh();
   }
 
-  return (
-    <main style={styles.page}>
-      <header style={styles.header}>
-        <Link href={BETA_PATH} style={styles.back} aria-label="Back to Pocket">
-          {BACK_CHEVRON_SVG}
-        </Link>
-        <div style={styles.headerRight}>
-          <span style={styles.email}>{email}</span>
-          <button style={{ ...styles.signOut, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={signOut}>
-            {SIGN_OUT_ICON} Sign out
-          </button>
+  if (!artist) {
+    return (
+      <main className={st.page}>
+        <div className={st.column}>
+          <div className={ds.detailTop}>
+            <Link href={BETA_PATH} className={ds.close} aria-label="Back to Pocket">
+              {BACK_CHEVRON_SVG}
+            </Link>
+            <div className={ds.dtActs} style={{ alignItems: "center" }}>
+              <span className={ds.k}>{email}</span>
+              <button className={ds.close} onClick={signOut} aria-label="Sign out" type="button">
+                {SIGN_OUT_ICON}
+              </button>
+            </div>
+          </div>
+          <div className={st.body}>
+            <CreateProfile />
+          </div>
         </div>
-      </header>
+      </main>
+    );
+  }
 
-      {!artist ? (
-        <CreateProfile />
-      ) : (
-        <>
-          <ProfileEditor artist={artist} contacts={contacts} onUpload={() => setComposing(true)} onNewExhibition={() => setAddingExhibition(true)} />
-          <WorksSection
-            artistId={artist.id}
-            artistSlug={artist.slug}
-            works={works}
-            shows={shows}
-            composing={composing}
-            setComposing={setComposing}
-          />
-          <ExhibitionsSection artistId={artist.id} works={works} shows={shows} adding={addingExhibition} setAdding={setAddingExhibition} />
-        </>
-      )}
-    </main>
-  );
+  return <ArtistPage artist={artist} works={works} contacts={contacts} shows={shows} links={links} onSignOut={signOut} />;
 }
 
 function CreateProfile() {
@@ -181,9 +194,7 @@ function CreateProfile() {
       based: based || null,
       country: country || null,
       bio: bio || null,
-      card_bg: "#000000",
-      card_ink: "#ffffff",
-      card_tint: "#333333",
+      ...PLAIN_CARD,
     });
 
     setBusy(false);
@@ -195,9 +206,9 @@ function CreateProfile() {
   }
 
   return (
-    <section style={styles.card}>
+    <section style={styles.darkCard}>
       <h1 style={styles.h1}>Set up your artist profile</h1>
-      <p style={styles.sub}>This becomes your public card on Pocket. You can add a photo after creating it.</p>
+      <p style={styles.sub}>This becomes your public card on Pocket. You can add a card photo right after.</p>
       <form onSubmit={submit} style={styles.form}>
         <Field label="Name">
           <input style={styles.input} required value={name} onChange={(e) => setName(e.target.value)} />
@@ -218,7 +229,13 @@ function CreateProfile() {
         </Field>
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.submit} type="submit" disabled={busy}>
-          {busy ? "..." : "Create profile"}
+          {busy ? (
+            <>
+              <Spinner /> Creating…
+            </>
+          ) : (
+            "Create profile"
+          )}
         </button>
       </form>
     </section>
@@ -229,265 +246,118 @@ function contactValue(contacts: StudioContact[], kind: StudioContact["kind"]) {
   return contacts.find((c) => c.kind === kind)?.value ?? "";
 }
 
-function ProfileEditor({
+function monthYear(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("en", { month: "short", year: "numeric", timeZone: "UTC" });
+}
+
+type OpenSheet = null | "profile" | "links" | "compose" | "exhibition" | { work: StudioArtwork } | { qr: StudioArtwork };
+
+// The artist's page exactly as visitors see it in the app (the detail sheet),
+// with edit controls on top: tap the card or avatar to change the photo, the
+// pencil to edit details, the tiles to edit works.
+function ArtistPage({
   artist,
+  works,
   contacts,
-  onUpload,
-  onNewExhibition,
+  shows,
+  links,
+  onSignOut,
 }: {
   artist: StudioArtist;
+  works: StudioArtwork[];
   contacts: StudioContact[];
-  onUpload: () => void;
-  onNewExhibition: () => void;
+  shows: StudioExhibition[];
+  links: StudioLink[];
+  onSignOut: () => void;
 }) {
   const router = useRouter();
   const supabase = createClient();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLInputElement>(null);
+  const avatarRef = useRef<HTMLInputElement>(null);
+  const [sheet, setSheet] = useState<OpenSheet>(null);
+  const [card, setCard] = useState({ card_bg: artist.card_bg, card_ink: artist.card_ink });
   const [avatarUrl, setAvatarUrl] = useState(artist.avatar_url);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<null | "card" | "avatar">(null);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState(works);
+  const [showRows, setShowRows] = useState(shows);
+  const [linkRows, setLinkRows] = useState(links);
   const [copied, setCopied] = useState(false);
 
-  async function copyLink() {
+  const hasCardPhoto = !!photoFromCardBg(card.card_bg);
+  const listens = rows.reduce((sum, w) => sum + w.listen_count, 0);
+  const url = `https://siang.co/${artist.slug}`;
+
+  async function changeCardPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading("card");
+    setError(null);
     try {
-      await navigator.clipboard.writeText(`https://siang.co/${artist.slug}`);
+      const [photo, tint] = await Promise.all([uploadFile(supabase, file), averageHex(file)]);
+      const next = { card_bg: photoCardBg(photo), card_ink: PHOTO_CARD_INK, card_tint: tint ?? artist.card_tint };
+      const { error } = await supabase.from("artists").update(next).eq("id", artist.id);
+      if (error) throw error;
+      setCard({ card_bg: next.card_bg, card_ink: next.card_ink });
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not upload the card photo.");
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  async function removeCardPhoto() {
+    setError(null);
+    const { error } = await supabase.from("artists").update(PLAIN_CARD).eq("id", artist.id);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setCard({ card_bg: PLAIN_CARD.card_bg, card_ink: PLAIN_CARD.card_ink });
+    router.refresh();
+  }
+
+  async function changeAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading("avatar");
+    setError(null);
+    try {
+      const photo = await uploadFile(supabase, file);
+      const { error } = await supabase.from("artists").update({ avatar_url: photo }).eq("id", artist.id);
+      if (error) throw error;
+      setAvatarUrl(photo);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not upload your photo.");
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  async function share() {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: artist.name, url });
+        return;
+      } catch {
+        // user cancelled the native share sheet
+        return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
       // clipboard API unavailable — nothing to fall back to here
     }
   }
-
-  async function shareLink() {
-    const url = `https://siang.co/${artist.slug}`;
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({ title: artist.name, url });
-      } catch {
-        // user cancelled the native share sheet
-      }
-    } else {
-      copyLink();
-    }
-  }
-
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(artist.name);
-  const [discipline, setDiscipline] = useState(artist.discipline ?? "");
-  const [based, setBased] = useState(artist.based ?? "");
-  const [country, setCountry] = useState(artist.country ?? "");
-  const [bio, setBio] = useState(artist.bio ?? "");
-  const [ig, setIg] = useState(contactValue(contacts, "ig") ? "@" + contactValue(contacts, "ig") : "");
-  const [line, setLine] = useState(contactValue(contacts, "line"));
-  const [emailContact, setEmailContact] = useState(contactValue(contacts, "email"));
-  const [web, setWeb] = useState(contactValue(contacts, "web"));
-  const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadError(null);
-    try {
-      const url = await uploadFile(supabase, file);
-      await supabase.from("artists").update({ avatar_url: url }).eq("id", artist.id);
-      setAvatarUrl(url);
-      router.refresh();
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function save() {
-    setError(null);
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setError("Add your name. It is the first thing visitors read.");
-      return;
-    }
-    const trimmedEmail = emailContact.trim();
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Check the email address. It needs an @ and a domain.");
-      return;
-    }
-
-    setBusy(true);
-    setSaved(false);
-
-    await supabase
-      .from("artists")
-      .update({
-        name: trimmedName,
-        discipline: discipline.trim() || null,
-        based: based.trim() || null,
-        country: country.trim() || null,
-        bio: bio.trim() || null,
-      })
-      .eq("id", artist.id);
-
-    const contactPairs: [StudioContact["kind"], string][] = [
-      ["ig", ig.trim().replace(/^@/, "")],
-      ["line", line.trim()],
-      ["email", trimmedEmail],
-      ["web", web.trim().replace(/^https?:\/\//i, "")],
-    ];
-    const toUpsert = contactPairs.filter(([, v]) => v).map(([kind, value]) => ({ artist_id: artist.id, kind, value }));
-    const toDelete = contactPairs.filter(([, v]) => !v).map(([kind]) => kind);
-    if (toUpsert.length) await supabase.from("artist_contacts").upsert(toUpsert, { onConflict: "artist_id,kind" });
-    if (toDelete.length) await supabase.from("artist_contacts").delete().eq("artist_id", artist.id).in("kind", toDelete);
-
-    setBusy(false);
-    setSaved(true);
-    setEditing(false);
-    router.refresh();
-  }
-
-  return (
-    <section style={styles.card}>
-      <div style={styles.profileHead}>
-        <button
-          style={{ ...styles.avatarBtn, backgroundImage: avatarUrl ? `url(${avatarUrl})` : undefined }}
-          onClick={() => fileRef.current?.click()}
-          aria-label="Change your photo"
-          type="button"
-        >
-          {!avatarUrl && (uploading ? "…" : CAMERA_ICON)}
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePhoto} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={styles.h1}>{artist.name}</h1>
-          <p style={styles.sub}>
-            siang.co/{artist.slug} · {[artist.discipline, artist.based].filter(Boolean).join(" · ")}
-          </p>
-        </div>
-        {!editing && (
-          <button style={{ ...styles.addBtn, display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start" }} onClick={() => setEditing(true)}>
-            {EDIT_ICON} Edit profile
-          </button>
-        )}
-      </div>
-      {uploadError && <p style={styles.error}>{uploadError}</p>}
-
-      <p style={styles.hint}>One link for your Instagram bio. Everything you publish appears there.</p>
-
-      {!editing ? (
-        <>
-          {artist.bio && <p style={{ ...styles.sub, marginTop: 14, color: "rgba(255,255,255,.86)" }}>{artist.bio}</p>}
-          {contacts.length > 0 && (
-            <div style={styles.chipRow}>
-              {contacts.map((c) => (
-                <span key={c.kind} style={{ ...styles.chip, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  {contactIcon(c.kind)} {c.value}
-                </span>
-              ))}
-            </div>
-          )}
-          {saved && <span style={{ ...styles.savedTag, display: "block", marginTop: 10 }}>Saved</span>}
-
-          <div style={{ ...styles.pillRow, marginTop: 20 }}>
-            <button style={styles.pillDk} onClick={copyLink} type="button">
-              {LINK_ICON} {copied ? "Copied" : "Copy link"}
-            </button>
-            <Link href={BETA_PATH} style={styles.pillDk}>
-              View your page
-            </Link>
-            <button style={styles.pillDk} onClick={shareLink} type="button">
-              {SHARE_GLYPH} Share
-            </button>
-          </div>
-          <div style={styles.makeGrid}>
-            <button style={styles.makePink} onClick={onUpload} type="button">
-              <span>{ADD_ICON}</span>
-              <span>
-                <span style={styles.makeTitle}>Upload a work</span>
-                <span style={styles.makeSub}>Sound, text, images and video</span>
-              </span>
-            </button>
-            <button style={styles.make} onClick={onNewExhibition} type="button">
-              <span>{IMAGE_ICON}</span>
-              <span>
-                <span style={styles.makeTitle}>New exhibition</span>
-                <span style={styles.makeSub}>Group works for one show</span>
-              </span>
-            </button>
-          </div>
-        </>
-      ) : (
-        <Sheet title="Edit profile" onClose={() => setEditing(false)}>
-          <div style={styles.form}>
-            <Field label="Name">
-              <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
-            </Field>
-            <p style={styles.hint}>Your link stays siang.co/{artist.slug}, even if you change your name.</p>
-            <div style={styles.row}>
-              <Field label="Discipline">
-                <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
-              </Field>
-              <Field label="Based in">
-                <input style={styles.input} value={based} onChange={(e) => setBased(e.target.value)} />
-              </Field>
-            </div>
-            <Field label="Country">
-              <input style={styles.input} value={country} onChange={(e) => setCountry(e.target.value)} />
-            </Field>
-            <label style={styles.label}>
-              <span style={{ display: "flex", justifyContent: "space-between" }}>
-                Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
-              </span>
-              <textarea
-                style={styles.textarea}
-                rows={3}
-                maxLength={BIO_LIMIT}
-                value={bio}
-                onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))}
-              />
-            </label>
-            <div style={styles.fldH}>Contact</div>
-            <Field label="Instagram">
-              <input style={styles.input} placeholder="@handle" value={ig} onChange={(e) => setIg(e.target.value)} />
-            </Field>
-            <Field label="LINE ID">
-              <input style={styles.input} value={line} onChange={(e) => setLine(e.target.value)} />
-            </Field>
-            <Field label="Email">
-              <input style={styles.input} type="email" value={emailContact} onChange={(e) => setEmailContact(e.target.value)} />
-            </Field>
-            <Field label="Website">
-              <input style={styles.input} value={web} onChange={(e) => setWeb(e.target.value)} />
-            </Field>
-            {error && <p style={styles.error}>{error}</p>}
-            <button style={styles.submit} onClick={save} disabled={busy}>
-              {busy ? "Saving..." : "Save profile"}
-            </button>
-          </div>
-        </Sheet>
-      )}
-    </section>
-  );
-}
-
-function WorksSection({
-  artistId,
-  artistSlug,
-  works,
-  shows,
-  composing,
-  setComposing,
-}: {
-  artistId: string;
-  artistSlug: string;
-  works: StudioArtwork[];
-  shows: StudioExhibition[];
-  composing: boolean;
-  setComposing: (v: boolean) => void;
-}) {
-  const router = useRouter();
-  const supabase = createClient();
-  const [rows, setRows] = useState(works);
 
   async function addWork(fields: {
     title: string;
@@ -501,7 +371,7 @@ function WorksSection({
     const { data, error } = await supabase
       .from("artworks")
       .insert({
-        artist_id: artistId,
+        artist_id: artist.id,
         slug,
         code: makeCode(),
         title: fields.title,
@@ -517,40 +387,610 @@ function WorksSection({
 
     if (fields.exhibitionId) {
       await supabase.from("exhibition_artworks").insert({ exhibition_id: fields.exhibitionId, artwork_id: data.id });
+      setShowRows((r) =>
+        r.map((sh) => (sh.id === fields.exhibitionId ? { ...sh, exhibition_artworks: [...sh.exhibition_artworks, { artwork_id: data.id }] } : sh))
+      );
     }
 
     setRows((r) => [...r, data as StudioArtwork]);
-    setComposing(false);
+    setSheet(null);
     router.refresh();
     return {};
   }
 
   async function updateWork(id: string, fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url">>) {
-    await supabase.from("artworks").update(fields).eq("id", id);
+    const { error } = await supabase.from("artworks").update(fields).eq("id", id);
+    if (error) return error.message;
     setRows((r) => r.map((w) => (w.id === id ? { ...w, ...fields } : w)));
+    router.refresh();
+    return null;
   }
 
   async function deleteWork(id: string) {
-    await supabase.from("artworks").delete().eq("id", id);
+    const { error } = await supabase.from("artworks").delete().eq("id", id);
+    if (error) return error.message;
     setRows((r) => r.filter((w) => w.id !== id));
+    setShowRows((r) => r.map((sh) => ({ ...sh, exhibition_artworks: sh.exhibition_artworks.filter((a) => a.artwork_id !== id) })));
+    setSheet(null);
+    router.refresh();
+    return null;
+  }
+
+  async function createExhibition(title: string, venue: string, year: number, kind: "solo" | "group", workIds: string[]) {
+    const { data, error } = await supabase
+      .from("exhibitions")
+      .insert({ artist_id: artist.id, title, venue, year, kind })
+      .select("id, title, kind, year, venue, cover_url")
+      .single();
+    if (error || !data) return { error: error?.message ?? "Could not create the exhibition." };
+
+    let linkedIds: string[] = [];
+    if (workIds.length) {
+      const { data: linked, error: linkError } = await supabase
+        .from("exhibition_artworks")
+        .insert(workIds.map((artwork_id) => ({ exhibition_id: data.id, artwork_id })))
+        .select("artwork_id");
+      if (linkError) {
+        // the exhibition itself was created; only the work links failed —
+        // still show it, but surface the error so it isn't silently wrong
+        setShowRows((r) => [{ ...data, exhibition_artworks: [] }, ...r]);
+        router.refresh();
+        return { error: `Exhibition created, but couldn't link works: ${linkError.message}` };
+      }
+      linkedIds = (linked ?? []).map((l) => l.artwork_id);
+    }
+    setShowRows((r) => [{ ...data, exhibition_artworks: linkedIds.map((id) => ({ artwork_id: id })) }, ...r]);
+    setSheet(null);
+    router.refresh();
+    return {};
+  }
+
+  async function updateShowCover(id: string, cover_url: string) {
+    setShowRows((r) => r.map((sh) => (sh.id === id ? { ...sh, cover_url } : sh)));
+    await supabase.from("exhibitions").update({ cover_url }).eq("id", id);
+  }
+
+  const tile = (w: StudioArtwork, meta: React.ReactNode) => (
+    <button key={w.id} className={ds.tile} onClick={() => setSheet({ work: w })} type="button" aria-label={`Edit ${w.title}`}>
+      <span
+        className={`${ds.piece} ${w.cover_url ? "" : st.placeholderPiece}`}
+        style={w.cover_url ? { background: `center/cover no-repeat url("${w.cover_url}")` } : undefined}
+      />
+      <span className={ds.cap}>{w.title}</span>
+      {meta}
+    </button>
+  );
+
+  return (
+    <main className={st.page}>
+      <div className={st.column}>
+        <div className={ds.detailTop}>
+          <div className={st.topLeft}>
+            <Link href={BETA_PATH} className={ds.close} aria-label="Back to Pocket">
+              {BACK_CHEVRON_SVG}
+            </Link>
+            <span className={ds.k}>{copied ? "Link copied" : "Your page"}</span>
+          </div>
+          <div className={ds.dtActs}>
+            <button className={ds.close} onClick={share} aria-label="Share your page" type="button">
+              {SHARE_GLYPH}
+            </button>
+            <button className={ds.close} onClick={() => setSheet("profile")} aria-label="Edit your details" type="button">
+              {EDIT_ICON}
+            </button>
+            <button className={ds.close} onClick={onSignOut} aria-label="Sign out" type="button">
+              {SIGN_OUT_ICON}
+            </button>
+          </div>
+        </div>
+
+        <div className={st.body}>
+          <button
+            className={`${ds.hero} ${st.heroBtn}`}
+            onClick={() => cardRef.current?.click()}
+            disabled={uploading === "card"}
+            aria-label={hasCardPhoto ? "Change your card photo" : "Add a photo to your card"}
+            type="button"
+          >
+            <span className={ds.side}>
+              <CardFace
+                card={{
+                  cardBg: card.card_bg,
+                  cardInk: card.card_ink,
+                  based: artist.based ?? "",
+                  country: artist.country ?? "",
+                  addedAt: artist.joined_at ?? new Date().toISOString(),
+                  name: artist.name,
+                  slug: artist.slug,
+                }}
+              />
+              {uploading === "card" && (
+                <span className={st.veil}>
+                  <Spinner size={28} label="Uploading card photo" />
+                </span>
+              )}
+            </span>
+            <span className={st.cardEdit}>
+              {CAMERA_ICON} {hasCardPhoto ? "Change photo" : "Add photo"}
+            </span>
+          </button>
+          <input ref={cardRef} type="file" accept="image/*" hidden onChange={changeCardPhoto} />
+          <p className={ds.fliphint}>
+            Tap the card to change its photo
+            {hasCardPhoto && (
+              <>
+                {" · "}
+                <button onClick={removeCardPhoto} style={{ textDecoration: "underline", fontSize: "inherit", color: "inherit" }} type="button">
+                  Remove
+                </button>
+              </>
+            )}
+          </p>
+
+          <div className={ds.dwho}>
+            <button
+              className={`${ds.avatar} ${st.avatarBtn}`}
+              style={avatarUrl ? { backgroundImage: `url("${avatarUrl}")` } : undefined}
+              onClick={() => avatarRef.current?.click()}
+              disabled={uploading === "avatar"}
+              aria-label="Change your photo"
+              type="button"
+            >
+              {uploading === "avatar" ? <Spinner size={20} label="Uploading photo" /> : !avatarUrl && CAMERA_ICON}
+              <span className={st.avatarBadge}>{EDIT_ICON}</span>
+            </button>
+            <input ref={avatarRef} type="file" accept="image/*" hidden onChange={changeAvatar} />
+            <div>
+              <h1 className={ds.dname}>{artist.name}</h1>
+              <div className={ds.dkind}>siang.co/{artist.slug}</div>
+            </div>
+          </div>
+          {error && <p style={{ ...styles.error, color: "#B63878" }}>{error}</p>}
+
+          {artist.bio ? (
+            <p className={ds.dbio}>{artist.bio}</p>
+          ) : (
+            <button className={st.addHint} onClick={() => setSheet("profile")} type="button">
+              + Add a short bio
+            </button>
+          )}
+
+          <div className={ds.dcontacts}>
+            {contacts.map((c) => (
+              <a key={c.kind} className={ds.mappill} href={contactHref(c.kind, c.value)} target="_blank" rel="noopener noreferrer">
+                {contactIcon(c.kind)}
+                <span>{contactLabel(c.kind)}</span>
+              </a>
+            ))}
+            {linkRows.map((l) => (
+              <a key={l.id} className={ds.mappill} href={l.url} target="_blank" rel="noopener noreferrer">
+                {LINK_ICON}
+                <span>{l.label}</span>
+              </a>
+            ))}
+            <button className={`${ds.mappill} ${st.dashed}`} onClick={() => setSheet("links")} type="button">
+              {ADD_ICON}
+              <span>{linkRows.length ? "Edit links" : "Add links"}</span>
+            </button>
+          </div>
+
+          <div className={ds.dmeta}>
+            <div className={ds.dmetaRow}>
+              <b>{listens.toLocaleString()} listens this month</b>
+              {artist.based && (
+                <span className={ds.mappill}>
+                  {PIN}
+                  <span>{artist.based}</span>
+                </span>
+              )}
+            </div>
+            <span>
+              {[artist.based, artist.country].filter(Boolean).join(", ") || "Add where you're based"} · on Siang since {monthYear(artist.joined_at)}
+            </span>
+          </div>
+
+          <div className={ds.dpanel}>
+            <section className={ds.dsec}>
+              <div className={ds.dsecHead}>
+                <h2>Art</h2>
+                <span>
+                  {rows.length} work{rows.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className={ds.shelf}>
+                <button className={ds.tile} onClick={() => setSheet("compose")} type="button">
+                  <span className={`${ds.piece} ${st.addPiece}`}>
+                    {ADD_ICON}
+                    <span>Upload a work</span>
+                  </span>
+                  <span className={ds.cap}>New work</span>
+                </button>
+                {rows.map((w) =>
+                  tile(
+                    w,
+                    <span className={ds.loc}>
+                      <span>
+                        {w.duration_sec ? clock(w.duration_sec) : "—"} · {w.listen_count.toLocaleString()} listens
+                      </span>
+                    </span>
+                  )
+                )}
+              </div>
+            </section>
+
+            <section className={ds.dsec}>
+              <div className={ds.dsecHead}>
+                <h2>Exhibitions</h2>
+                <span>
+                  {showRows.length} show{showRows.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              {showRows.map((sh) => {
+                const showWorks = rows.filter((w) => sh.exhibition_artworks.some((a) => a.artwork_id === w.id));
+                return (
+                  <div className={ds.show} key={sh.id}>
+                    <div className={ds.showHead}>
+                      <ShowCoverButton show={sh} onChange={updateShowCover} />
+                      <span className={ds.t}>
+                        <em>{sh.title}</em>
+                        <span className={ds.loc}>
+                          {PIN}
+                          <span>
+                            {sh.venue ?? "No venue"} · {sh.year ?? "—"} · {sh.kind === "solo" ? "Solo" : "Group"}
+                          </span>
+                        </span>
+                      </span>
+                      <span className={ds.more}>
+                        {showWorks.length} work{showWorks.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {showWorks.length > 0 && <div className={ds.shelf}>{showWorks.slice(0, 3).map((w) => tile(w, null))}</div>}
+                  </div>
+                );
+              })}
+              {showRows.length === 0 && <p className={st.empty}>Group works into a show so visitors can find where they hung.</p>}
+              <button className={st.darkAdd} onClick={() => setSheet("exhibition")} type="button">
+                {ADD_ICON} New exhibition
+              </button>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      {sheet === "profile" && (
+        <Sheet title="Edit your details" onClose={() => setSheet(null)}>
+          <EditProfileForm artist={artist} contacts={contacts} onDone={() => setSheet(null)} onEditLinks={() => setSheet("links")} />
+        </Sheet>
+      )}
+      {sheet === "links" && (
+        <Sheet title="Links" onClose={() => setSheet(null)}>
+          <LinksEditor artistId={artist.id} rows={linkRows} setRows={setLinkRows} />
+        </Sheet>
+      )}
+      {sheet === "compose" && <WorkComposer artistSlug={artist.slug} shows={showRows} onClose={() => setSheet(null)} onSubmit={addWork} />}
+      {sheet === "exhibition" && (
+        <Sheet title="New exhibition" onClose={() => setSheet(null)}>
+          <NewExhibitionForm works={rows} onSubmit={createExhibition} />
+        </Sheet>
+      )}
+      {sheet && typeof sheet === "object" && "work" in sheet && (
+        <WorkSheet
+          work={sheet.work}
+          onClose={() => setSheet(null)}
+          onUpdate={updateWork}
+          onDelete={deleteWork}
+          onShowQR={() => setSheet({ qr: sheet.work })}
+        />
+      )}
+      {sheet && typeof sheet === "object" && "qr" in sheet && (
+        <WorkQRSheet artistSlug={artist.slug} work={sheet.qr} onClose={() => setSheet(null)} />
+      )}
+    </main>
+  );
+}
+
+function ShowCoverButton({ show, onChange }: { show: StudioExhibition; onChange: (id: string, cover_url: string) => void }) {
+  const supabase = createClient();
+  const [uploading, setUploading] = useState(false);
+
+  async function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      onChange(show.id, await uploadFile(supabase, file));
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
-    <section style={styles.card}>
-      <div style={styles.worksHead}>
-        <h2 style={styles.h2}>Works</h2>
-        <span style={styles.composerSecLabel}>{rows.length} work{rows.length === 1 ? "" : "s"}</span>
-      </div>
+    <label
+      className={st.showCover}
+      style={show.cover_url ? { backgroundImage: `url("${show.cover_url}")` } : undefined}
+      aria-label="Change exhibition cover photo"
+    >
+      {uploading ? <Spinner size={16} label="Uploading cover" /> : !show.cover_url && CAMERA_ICON}
+      <input type="file" accept="image/*" hidden onChange={handleCover} />
+    </label>
+  );
+}
 
-      {composing && <WorkComposer artistSlug={artistSlug} shows={shows} onClose={() => setComposing(false)} onSubmit={addWork} />}
+function EditProfileForm({
+  artist,
+  contacts,
+  onDone,
+  onEditLinks,
+}: {
+  artist: StudioArtist;
+  contacts: StudioContact[];
+  onDone: () => void;
+  onEditLinks: () => void;
+}) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [name, setName] = useState(artist.name);
+  const [discipline, setDiscipline] = useState(artist.discipline ?? "");
+  const [based, setBased] = useState(artist.based ?? "");
+  const [country, setCountry] = useState(artist.country ?? "");
+  const [bio, setBio] = useState(artist.bio ?? "");
+  const [ig, setIg] = useState(contactValue(contacts, "ig") ? "@" + contactValue(contacts, "ig") : "");
+  const [line, setLine] = useState(contactValue(contacts, "line"));
+  const [emailContact, setEmailContact] = useState(contactValue(contacts, "email"));
+  const [web, setWeb] = useState(contactValue(contacts, "web"));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-      <div style={styles.workList}>
-        {rows.map((w) => (
-          <WorkRow key={w.id} work={w} artistSlug={artistSlug} onUpdate={updateWork} onDelete={deleteWork} />
-        ))}
-        {rows.length === 0 && !composing && <p style={styles.empty}>No works yet.</p>}
+  async function save() {
+    setError(null);
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Add your name. It is the first thing visitors read.");
+      return;
+    }
+    const trimmedEmail = emailContact.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Check the email address. It needs an @ and a domain.");
+      return;
+    }
+
+    setBusy(true);
+    const { error: updateError } = await supabase
+      .from("artists")
+      .update({
+        name: trimmedName,
+        discipline: discipline.trim() || null,
+        based: based.trim() || null,
+        country: country.trim() || null,
+        bio: bio.trim() || null,
+      })
+      .eq("id", artist.id);
+    if (updateError) {
+      setBusy(false);
+      setError(updateError.message);
+      return;
+    }
+
+    const contactPairs: [StudioContact["kind"], string][] = [
+      ["ig", ig.trim().replace(/^@/, "")],
+      ["line", line.trim()],
+      ["email", trimmedEmail],
+      ["web", web.trim().replace(/^https?:\/\//i, "")],
+    ];
+    const toUpsert = contactPairs.filter(([, v]) => v).map(([kind, value]) => ({ artist_id: artist.id, kind, value }));
+    const toDelete = contactPairs.filter(([, v]) => !v).map(([kind]) => kind);
+    if (toUpsert.length) await supabase.from("artist_contacts").upsert(toUpsert, { onConflict: "artist_id,kind" });
+    if (toDelete.length) await supabase.from("artist_contacts").delete().eq("artist_id", artist.id).in("kind", toDelete);
+
+    setBusy(false);
+    router.refresh();
+    onDone();
+  }
+
+  return (
+    <div style={styles.form}>
+      <Field label="Name">
+        <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <p style={styles.hint}>Your link stays siang.co/{artist.slug}, even if you change your name.</p>
+      <div style={styles.row}>
+        <Field label="Discipline">
+          <input style={{ ...styles.input, minWidth: 0 }} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
+        </Field>
+        <Field label="Based in">
+          <input style={{ ...styles.input, minWidth: 0 }} value={based} onChange={(e) => setBased(e.target.value)} />
+        </Field>
       </div>
-    </section>
+      <Field label="Country">
+        <input style={styles.input} value={country} onChange={(e) => setCountry(e.target.value)} />
+      </Field>
+      <label style={styles.label}>
+        <span style={{ display: "flex", justifyContent: "space-between" }}>
+          Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
+        </span>
+        <textarea style={styles.textarea} rows={3} maxLength={BIO_LIMIT} value={bio} onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))} />
+      </label>
+      <div style={styles.fldH}>Contact</div>
+      <Field label="Instagram">
+        <input style={styles.input} placeholder="@handle" value={ig} onChange={(e) => setIg(e.target.value)} />
+      </Field>
+      <Field label="LINE ID">
+        <input style={styles.input} value={line} onChange={(e) => setLine(e.target.value)} />
+      </Field>
+      <Field label="Email">
+        <input style={styles.input} type="email" value={emailContact} onChange={(e) => setEmailContact(e.target.value)} />
+      </Field>
+      <Field label="Website">
+        <input style={styles.input} value={web} onChange={(e) => setWeb(e.target.value)} />
+      </Field>
+      <button style={{ ...styles.rowBtn, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onEditLinks} type="button">
+        {LINK_ICON} Edit links
+      </button>
+      {error && <p style={styles.error}>{error}</p>}
+      <button style={styles.submit} onClick={save} disabled={busy} type="button">
+        {busy ? (
+          <>
+            <Spinner /> Saving…
+          </>
+        ) : (
+          "Save"
+        )}
+      </button>
+    </div>
+  );
+}
+
+// Links shown as buttons on the artist's public page, Linktree style.
+function normalizeUrl(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  try {
+    const url = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function LinksEditor({
+  artistId,
+  rows,
+  setRows,
+}: {
+  artistId: string;
+  rows: StudioLink[];
+  setRows: React.Dispatch<React.SetStateAction<StudioLink[]>>;
+}) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [label, setLabel] = useState("");
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function add() {
+    setError(null);
+    const l = label.trim();
+    const u = normalizeUrl(url);
+    if (!l) {
+      setError("Give the link a name, like “Shop” or “Portfolio”.");
+      return;
+    }
+    if (!u) {
+      setError("Check the link. It should look like example.com or https://example.com.");
+      return;
+    }
+    setBusy(true);
+    const sort_order = rows.length ? Math.max(...rows.map((r) => r.sort_order)) + 1 : 0;
+    const { data, error } = await supabase
+      .from("artist_links")
+      .insert({ artist_id: artistId, label: l, url: u, sort_order })
+      .select("id, label, url, sort_order")
+      .single<StudioLink>();
+    setBusy(false);
+    if (error || !data) {
+      setError(error?.message ?? "Could not add the link.");
+      return;
+    }
+    setRows((r) => [...r, data]);
+    setLabel("");
+    setUrl("");
+    router.refresh();
+  }
+
+  async function remove(id: string) {
+    setError(null);
+    const { error } = await supabase.from("artist_links").delete().eq("id", id);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setRows((r) => r.filter((x) => x.id !== id));
+    router.refresh();
+  }
+
+  async function move(index: number, dir: -1 | 1) {
+    const other = index + dir;
+    if (other < 0 || other >= rows.length) return;
+    // Swap the two rows, then renumber everything so equal sort_orders can't tie.
+    const next = [...rows];
+    [next[index], next[other]] = [next[other], next[index]];
+    const renumbered = next.map((r, i) => ({ ...r, sort_order: i }));
+    setRows(renumbered);
+    setError(null);
+    const results = await Promise.all(
+      renumbered.map((r) => supabase.from("artist_links").update({ sort_order: r.sort_order }).eq("id", r.id))
+    );
+    const failed = results.find((res) => res.error);
+    if (failed?.error) setError(failed.error.message);
+    router.refresh();
+  }
+
+  return (
+    <div>
+      <p style={{ ...styles.hint, marginTop: -8 }}>Buttons on your page, like a Linktree: shop, portfolio, YouTube, anything.</p>
+
+      {rows.length > 0 && (
+        <div style={styles.linkList}>
+          {rows.map((r, i) => (
+            <div key={r.id} style={styles.linkRow}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={styles.workTitle}>{r.label}</div>
+                <div style={{ ...styles.workMeta, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.url}</div>
+              </div>
+              <button
+                style={{ ...styles.rowBtn, ...styles.orderBtn, opacity: i === 0 ? 0.3 : 1 }}
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                aria-label={`Move ${r.label} up`}
+                type="button"
+              >
+                {UP_ICON}
+              </button>
+              <button
+                style={{ ...styles.rowBtn, ...styles.orderBtn, opacity: i === rows.length - 1 ? 0.3 : 1 }}
+                onClick={() => move(i, 1)}
+                disabled={i === rows.length - 1}
+                aria-label={`Move ${r.label} down`}
+                type="button"
+              >
+                {DOWN_ICON}
+              </button>
+              <button style={{ ...styles.rowBtnDanger, ...styles.orderBtn }} onClick={() => remove(r.id)} aria-label={`Delete ${r.label}`} type="button">
+                {DELETE_ICON}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ ...styles.form, marginTop: 16 }}>
+        <div style={styles.linkFields}>
+          <Field label="Name">
+            <input style={{ ...styles.input, minWidth: 0 }} placeholder="Shop" value={label} maxLength={60} onChange={(e) => setLabel(e.target.value)} />
+          </Field>
+          <Field label="Link">
+            <input
+              style={{ ...styles.input, minWidth: 0 }}
+              placeholder="example.com"
+              value={url}
+              inputMode="url"
+              autoCapitalize="none"
+              spellCheck={false}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") add();
+              }}
+            />
+          </Field>
+        </div>
+        <button style={styles.saveSm} onClick={add} disabled={busy} type="button">
+          {busy ? <Spinner size={14} /> : ADD_ICON} Add link
+        </button>
+      </div>
+      {error && <p style={styles.error}>{error}</p>}
+    </div>
   );
 }
 
@@ -686,7 +1126,7 @@ function WorkComposer({
             >
               {!coverUrl &&
                 (coverUploading ? (
-                  "…"
+                  <Spinner size={22} label="Uploading cover" />
                 ) : (
                   <>
                     + Add cover
@@ -728,7 +1168,13 @@ function WorkComposer({
             <button type="button" style={styles.soundBoxFilled} onClick={() => soundRef.current?.click()}>
               {MUSIC_ICON}
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {soundUploading ? "Uploading…" : soundName}
+                {soundUploading ? (
+                  <>
+                    <Spinner size={14} /> Uploading {soundName}…
+                  </>
+                ) : (
+                  soundName
+                )}
               </span>
               {durationSec != null && <span style={{ color: "rgba(255,255,255,.5)", fontSize: 12.5 }}>{clock(durationSec)}</span>}
             </button>
@@ -789,8 +1235,16 @@ function WorkComposer({
           {error && <p style={styles.error}>{error}</p>}
         </div>
         <div style={styles.composerBar}>
-          <button style={styles.submit} onClick={publish} disabled={busy || soundUploading || coverUploading} type="button">
-            {busy ? "Publishing..." : "Publish"}
+          <button style={{ ...styles.submit, width: "100%" }} onClick={publish} disabled={busy || soundUploading || coverUploading} type="button">
+            {busy ? (
+              <>
+                <Spinner /> Publishing…
+              </>
+            ) : soundUploading ? (
+              "Waiting for the sound to upload…"
+            ) : (
+              "Publish"
+            )}
           </button>
           <p style={styles.composerHint}>Publishing gives the work its page, a six-digit code and a QR to print.</p>
         </div>
@@ -845,240 +1299,128 @@ function WorkQRSheet({ artistSlug, work, onClose }: { artistSlug: string; work: 
   );
 }
 
-function WorkRow({
+// Opened by tapping a work's tile: change its cover, fix its details, print
+// its QR, or delete it.
+function WorkSheet({
   work,
-  artistSlug,
+  onClose,
   onUpdate,
   onDelete,
+  onShowQR,
 }: {
   work: StudioArtwork;
-  artistSlug: string;
-  onUpdate: (id: string, fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url">>) => void;
-  onDelete: (id: string) => void;
+  onClose: () => void;
+  onUpdate: (id: string, fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url">>) => Promise<string | null>;
+  onDelete: (id: string) => Promise<string | null>;
+  onShowQR: () => void;
 }) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [editing, setEditing] = useState(false);
+  const [coverUrl, setCoverUrl] = useState(work.cover_url);
   const [title, setTitle] = useState(work.title);
   const [description, setDescription] = useState(work.description ?? "");
   const [duration, setDuration] = useState(work.duration_sec ? clock(work.duration_sec) : "");
   const [uploading, setUploading] = useState(false);
-  const [showQR, setShowQR] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     setUploading(true);
+    setError(null);
     try {
       const url = await uploadFile(supabase, file);
-      onUpdate(work.id, { cover_url: url });
+      const err = await onUpdate(work.id, { cover_url: url });
+      if (err) setError(err);
+      else setCoverUrl(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setUploading(false);
     }
   }
 
-  const thumb = (
-    <button
-      style={{ ...styles.thumb, backgroundImage: work.cover_url ? `url(${work.cover_url})` : undefined }}
-      onClick={() => fileRef.current?.click()}
-      aria-label="Change cover photo"
-      type="button"
-    >
-      {!work.cover_url && (uploading ? "…" : CAMERA_ICON)}
-      <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCover} />
-    </button>
-  );
+  async function save() {
+    setError(null);
+    const t = title.trim();
+    if (!t) {
+      setError("A work needs a title.");
+      return;
+    }
+    if (duration && !/^\d+:\d{2}$/.test(duration.trim())) {
+      setError("Write the length as minutes:seconds, like 3:12.");
+      return;
+    }
+    setBusy(true);
+    const err = await onUpdate(work.id, { title: t, description: description.trim() || null, duration_sec: duration ? secs(duration.trim()) : null });
+    setBusy(false);
+    if (err) setError(err);
+    else onClose();
+  }
 
-  if (!editing) {
-    return (
-      <div style={styles.workRow}>
-        {thumb}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <b style={styles.workTitle}>{work.title}</b>
-          <span style={styles.workMeta}>
-            {work.duration_sec ? clock(work.duration_sec) : "—"} · {work.listen_count.toLocaleString()} listens
-          </span>
-        </div>
-        <button style={styles.qrBtn} onClick={() => setShowQR(true)} aria-label={`Share or print the code for ${work.title}`} type="button">
-          {QR_GLYPH}
-        </button>
-        <div style={styles.kebabWrap}>
-          <button style={styles.kebabBtn} onClick={() => setMenuOpen((m) => !m)} aria-label="More options" type="button">
-            {KEBAB_ICON}
+  async function remove() {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setBusy(true);
+    const err = await onDelete(work.id);
+    setBusy(false);
+    if (err) setError(err);
+  }
+
+  return (
+    <Sheet title="Edit work" onClose={onClose}>
+      <div style={styles.form}>
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+          <button
+            type="button"
+            style={{ ...styles.coverUpload, backgroundImage: coverUrl ? `url("${coverUrl}")` : undefined }}
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            aria-label="Change the cover image"
+          >
+            {uploading ? <Spinner size={22} label="Uploading cover" /> : !coverUrl && <>{CAMERA_ICON}<br />Add cover</>}
           </button>
-          {menuOpen && (
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCover} />
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+            <Field label="Title">
+              <input style={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} />
+            </Field>
+            <Field label="Length">
+              <input style={styles.input} value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="m:ss" inputMode="numeric" />
+            </Field>
+          </div>
+        </div>
+        <Field label="About this work">
+          <textarea style={styles.textarea} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </Field>
+        <p style={styles.hint}>
+          Code {formatCode(work.code)} · {work.listen_count.toLocaleString()} listens
+        </p>
+        {error && <p style={styles.error}>{error}</p>}
+        <button style={styles.submit} onClick={save} disabled={busy || uploading} type="button">
+          {busy && !confirmDelete ? (
             <>
-              <div style={{ position: "fixed", inset: 0, zIndex: 19 }} onClick={() => setMenuOpen(false)} />
-              <div style={styles.kebabMenu}>
-                <button
-                  style={styles.kebabItem}
-                  onClick={() => {
-                    setEditing(true);
-                    setMenuOpen(false);
-                  }}
-                  type="button"
-                >
-                  {EDIT_ICON} Edit
-                </button>
-                <button
-                  style={styles.kebabItemDanger}
-                  onClick={() => {
-                    onDelete(work.id);
-                    setMenuOpen(false);
-                  }}
-                  type="button"
-                >
-                  {DELETE_ICON} Delete
-                </button>
-              </div>
+              <Spinner /> Saving…
             </>
+          ) : (
+            "Save"
           )}
-        </div>
-        {showQR && <WorkQRSheet artistSlug={artistSlug} work={work} onClose={() => setShowQR(false)} />}
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.workRowEditing}>
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        {thumb}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-          <input style={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} />
-          <input style={styles.input} value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="m:ss" />
+        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button style={{ ...styles.rowBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onShowQR} type="button">
+            {QR_GLYPH} QR code to print
+          </button>
+          <button style={{ ...styles.rowBtnDanger, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={remove} disabled={busy} type="button">
+            {DELETE_ICON} {confirmDelete ? "Tap again to delete" : "Delete work"}
+          </button>
         </div>
       </div>
-      <textarea style={styles.textarea} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-      <div style={{ display: "flex", gap: 8 }}>
-        <button
-          style={styles.saveSm}
-          onClick={() => {
-            onUpdate(work.id, { title, description: description || null, duration_sec: duration ? secs(duration) : null });
-            setEditing(false);
-          }}
-        >
-          Save
-        </button>
-        <button style={styles.rowBtn} onClick={() => setEditing(false)}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ExhibitionsSection({
-  artistId,
-  works,
-  shows,
-  adding,
-  setAdding,
-}: {
-  artistId: string;
-  works: StudioArtwork[];
-  shows: StudioExhibition[];
-  adding: boolean;
-  setAdding: (v: boolean) => void;
-}) {
-  const router = useRouter();
-  const supabase = createClient();
-  const [rows, setRows] = useState(shows);
-
-  async function createExhibition(title: string, venue: string, year: number, kind: "solo" | "group", workIds: string[]) {
-    const { data, error } = await supabase
-      .from("exhibitions")
-      .insert({ artist_id: artistId, title, venue, year, kind })
-      .select("id, title, kind, year, venue, cover_url")
-      .single();
-    if (error || !data) return { error: error?.message ?? "Could not create the exhibition." };
-
-    let linkedIds: string[] = [];
-    if (workIds.length) {
-      const { data: linked, error: linkError } = await supabase
-        .from("exhibition_artworks")
-        .insert(workIds.map((artwork_id) => ({ exhibition_id: data.id, artwork_id })))
-        .select("artwork_id");
-      if (linkError) {
-        // the exhibition itself was created; only the work links failed —
-        // still show it, but surface the error so it isn't silently wrong
-        setRows((r) => [{ ...data, exhibition_artworks: [] }, ...r]);
-        setAdding(false);
-        router.refresh();
-        return { error: `Exhibition created, but couldn't link works: ${linkError.message}` };
-      }
-      linkedIds = (linked ?? []).map((l) => l.artwork_id);
-    }
-    setRows((r) => [{ ...data, exhibition_artworks: linkedIds.map((id) => ({ artwork_id: id })) }, ...r]);
-    setAdding(false);
-    router.refresh();
-    return {};
-  }
-
-  async function updateCover(id: string, cover_url: string) {
-    setRows((r) => r.map((sh) => (sh.id === id ? { ...sh, cover_url } : sh)));
-    await supabase.from("exhibitions").update({ cover_url }).eq("id", id);
-  }
-
-  return (
-    <section style={styles.card}>
-      <div style={styles.worksHead}>
-        <h2 style={styles.h2}>Exhibitions</h2>
-        <span style={styles.composerSecLabel}>{rows.length} show{rows.length === 1 ? "" : "s"}</span>
-      </div>
-
-      {adding && (
-        <Sheet title="New exhibition" onClose={() => setAdding(false)}>
-          <NewExhibitionForm works={works} onSubmit={createExhibition} />
-        </Sheet>
-      )}
-
-      <div style={styles.workList}>
-        {rows.map((sh) => (
-          <ExhibitionRow key={sh.id} show={sh} onCoverChange={updateCover} />
-        ))}
-        {rows.length === 0 && !adding && <p style={styles.empty}>No exhibitions yet.</p>}
-      </div>
-    </section>
-  );
-}
-
-function ExhibitionRow({ show, onCoverChange }: { show: StudioExhibition; onCoverChange: (id: string, cover_url: string) => void }) {
-  const supabase = createClient();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
-  async function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const url = await uploadFile(supabase, file);
-      onCoverChange(show.id, url);
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  return (
-    <div style={styles.workRow}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <b style={styles.workTitle}>{show.title}</b>
-        <span style={styles.workMeta}>
-          {show.kind === "solo" ? "Solo" : "Group"} · {show.year ?? "—"} · {show.venue ?? "No venue"} · {show.exhibition_artworks.length} work
-          {show.exhibition_artworks.length === 1 ? "" : "s"}
-        </span>
-      </div>
-      <button
-        style={{ ...styles.coverBtn, backgroundImage: show.cover_url ? `url(${show.cover_url})` : undefined }}
-        onClick={() => fileRef.current?.click()}
-        aria-label="Change exhibition cover photo"
-        type="button"
-      >
-        {!show.cover_url && (uploading ? "…" : CAMERA_ICON)}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCover} />
-      </button>
-    </div>
+    </Sheet>
   );
 }
 
@@ -1170,7 +1512,13 @@ function NewExhibitionForm({
       )}
       {error && <p style={styles.error}>{error}</p>}
       <button style={styles.saveSm} type="submit" disabled={busy}>
-        {busy ? "Creating..." : "Create exhibition"}
+        {busy ? (
+          <>
+            <Spinner size={14} /> Creating…
+          </>
+        ) : (
+          "Create exhibition"
+        )}
       </button>
     </form>
   );
@@ -1235,6 +1583,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     cursor: "pointer",
   },
+  darkCard: {
+    background: "#161617",
+    color: "#fff",
+    borderRadius: 20,
+    padding: "22px 18px",
+    marginTop: 8,
+    boxShadow: "0 20px 60px -20px rgba(0,0,0,.4)",
+  },
   card: {
     maxWidth: 520,
     margin: "0 auto 40px",
@@ -1263,6 +1619,9 @@ const styles: Record<string, React.CSSProperties> = {
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
   label: { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.7)" },
   input: {
+    width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
     height: 42,
     borderRadius: 10,
     border: "1px solid rgba(255,255,255,.16)",
@@ -1284,17 +1643,25 @@ const styles: Record<string, React.CSSProperties> = {
   },
   error: { fontSize: 13, color: "#FF6FA5", margin: "10px 0 0" },
   submit: {
-    height: 44,
+    height: 48,
+    padding: "0 24px",
     borderRadius: 999,
     border: 0,
     background: "#B63878",
     color: "#fff",
     fontWeight: 700,
-    fontSize: 14.5,
+    fontSize: 15,
     cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
   saveSm: {
     alignSelf: "flex-start",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
     height: 36,
     padding: "0 16px",
     borderRadius: 999,
@@ -1382,6 +1749,27 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   empty: { fontSize: 13.5, color: "rgba(255,255,255,.55)" },
+  cardPreview: {
+    position: "relative",
+    marginTop: 14,
+    width: "100%",
+    maxWidth: 352,
+    aspectRatio: "1.585 / 1",
+    borderRadius: 15,
+    overflow: "hidden",
+    boxShadow: "0 14px 30px -12px rgba(0,0,0,.6)",
+  },
+  linkFields: { display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 3fr)", gap: 12 },
+  orderBtn: { width: 30, padding: 0, display: "grid", placeItems: "center", flex: "none" },
+  linkList: { display: "flex", flexDirection: "column", gap: 8, marginTop: 14 },
+  linkRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "rgba(255,255,255,.06)",
+  },
   chipRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 },
   chip: {
     fontSize: 12.5,

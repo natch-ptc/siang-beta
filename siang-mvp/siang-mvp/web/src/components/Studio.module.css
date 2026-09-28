@@ -1,0 +1,197 @@
+/* The Studio shows the artist their page the way visitors see it (the detail
+   sheet in the app, whose styles it reuses) with edit controls on top. These
+   are only the Studio-specific additions. */
+
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: linear-gradient(180deg, #efefed, #d3d3d1);
+}
+
+.column {
+  max-width: 520px;
+  margin: 0 auto;
+  padding-top: calc(10px + env(safe-area-inset-top));
+}
+
+.topLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.body {
+  padding: 0 18px;
+}
+
+/* The card is one big button: tap it to change the photo. */
+.heroBtn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+/* Bottom-right, where the real card has its flip button, so it never covers the name or date. */
+.cardEdit {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+/* Covers an image while its replacement uploads. */
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    background: rgba(0, 0, 0, 0.28);
+  }
+  50% {
+    background: rgba(0, 0, 0, 0.46);
+  }
+}
+
+.avatarBtn {
+  padding: 0;
+  cursor: pointer;
+  background: #d9d7d2 center/cover no-repeat;
+  color: rgba(0, 0, 0, 0.55);
+  overflow: visible;
+}
+.avatarBadge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #000;
+  color: #fff;
+  box-shadow: 0 0 0 2px #e6e6e3;
+}
+.avatarBadge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.addHint {
+  margin-top: 14px;
+  font-size: 15px;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dashed {
+  border-style: dashed;
+  color: var(--ink-soft);
+}
+
+.addPiece {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px;
+}
+
+.placeholderPiece {
+  background: linear-gradient(160deg, #2a2a2c, #111);
+}
+
+.darkAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  margin-top: 18px;
+  padding: 0 14px 0 12px;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.showRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.showCover {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06) center/cover no-repeat;
+  color: rgba(255, 255, 255, 0.6);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.empty {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Loading state (app/studio/loading.tsx): a shimmering card placeholder. */
+.skeletonCard {
+  margin-top: 56px;
+  width: 100%;
+  aspect-ratio: 1.585 / 1;
+  border-radius: 16px;
+  background: linear-gradient(100deg, #dcdcd9 30%, #ececea 50%, #dcdcd9 70%);
+  background-size: 300% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+.loadingText {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}

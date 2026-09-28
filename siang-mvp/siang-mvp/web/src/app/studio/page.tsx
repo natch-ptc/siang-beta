@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import StudioClient, { type StudioArtist, type StudioArtwork, type StudioContact, type StudioExhibition } from "@/components/StudioClient";
+import StudioClient, { type StudioArtist, type StudioArtwork, type StudioContact, type StudioExhibition, type StudioLink } from "@/components/StudioClient";
 
 export default async function StudioPage() {
   const supabase = await createClient();
@@ -12,15 +12,16 @@ export default async function StudioPage() {
 
   const { data: artist } = await supabase
     .from("artists")
-    .select("id, slug, name, discipline, based, country, bio, avatar_url")
+    .select("id, slug, name, discipline, based, country, bio, avatar_url, card_bg, card_ink, card_tint, joined_at")
     .eq("user_id", userId)
     .maybeSingle<StudioArtist>();
 
   let works: StudioArtwork[] = [];
   let contacts: StudioContact[] = [];
   let shows: StudioExhibition[] = [];
+  let links: StudioLink[] = [];
   if (artist) {
-    const [worksRes, contactsRes, showsRes] = await Promise.all([
+    const [worksRes, contactsRes, showsRes, linksRes] = await Promise.all([
       supabase
         .from("artworks")
         .select("id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order")
@@ -32,11 +33,13 @@ export default async function StudioPage() {
         .select("id, title, kind, year, venue, cover_url, exhibition_artworks(artwork_id)")
         .eq("artist_id", artist.id)
         .order("year", { ascending: false }),
+      supabase.from("artist_links").select("id, label, url, sort_order").eq("artist_id", artist.id).order("sort_order"),
     ]);
     works = (worksRes.data as StudioArtwork[]) ?? [];
     contacts = (contactsRes.data as StudioContact[]) ?? [];
     shows = (showsRes.data as unknown as StudioExhibition[]) ?? [];
+    links = (linksRes.data as StudioLink[]) ?? [];
   }
 
-  return <StudioClient email={email ?? ""} artist={artist ?? null} works={works} contacts={contacts} shows={shows} />;
+  return <StudioClient email={email ?? ""} artist={artist ?? null} works={works} contacts={contacts} shows={shows} links={links} />;
 }
