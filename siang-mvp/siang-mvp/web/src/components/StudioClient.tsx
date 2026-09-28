@@ -24,6 +24,7 @@ import {
   QR_GLYPH,
   UP_ICON,
   DOWN_ICON,
+  MOVE_ICON,
   PIN,
   contactIcon,
   contactHref,
@@ -33,7 +34,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { slugify, slugProblem, SLUG_MAX } from "@/lib/slug";
 import { COUNTRIES, findCity, findCountry } from "@/lib/places";
 import { BETA_PATH } from "@/lib/beta";
-import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg } from "@/lib/card-cover";
+import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg, photoPosition } from "@/lib/card-cover";
 import CardFace from "./CardFace";
 import Spinner from "./Spinner";
 // The Studio reuses the detail sheet's styles so the artist edits their page as visitors see it.
@@ -308,7 +309,60 @@ function ArtistPage({
   const [linkRows, setLinkRows] = useState(links);
   const [copied, setCopied] = useState(false);
 
-  const hasCardPhoto = !!photoFromCardBg(card.card_bg);
+  const cardPhoto = photoFromCardBg(card.card_bg);
+  const hasCardPhoto = !!cardPhoto;
+  // Repositioning the card photo: while set, dragging the card moves the photo.
+  const [adjust, setAdjust] = useState<{ x: number; y: number } | null>(null);
+  const [savingPosition, setSavingPosition] = useState(false);
+  const heroRef = useRef<HTMLButtonElement>(null);
+  const photoSize = useRef<{ w: number; h: number } | null>(null);
+  const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
+  const shownCardBg = adjust && cardPhoto ? photoCardBg(cardPhoto, adjust.x, adjust.y) : card.card_bg;
+
+  function startAdjust(bg = card.card_bg) {
+    const photo = photoFromCardBg(bg);
+    if (!photo) return;
+    photoSize.current = null;
+    const img = new Image();
+    img.onload = () => (photoSize.current = { w: img.naturalWidth, h: img.naturalHeight });
+    img.src = photo;
+    setAdjust(photoPosition(bg));
+  }
+
+  // With background-size: cover the photo overflows the card on one axis;
+  // dragging by the whole overflow moves the position from 0% to 100%.
+  function onAdjustMove(e: React.PointerEvent) {
+    const d = drag.current;
+    const el = heroRef.current;
+    const size = photoSize.current;
+    if (!d || !el || !size) return;
+    const cw = el.clientWidth;
+    const ch = el.clientHeight;
+    const scale = Math.max(cw / size.w, ch / size.h);
+    const overX = size.w * scale - cw;
+    const overY = size.h * scale - ch;
+    const clamp = (n: number) => Math.min(100, Math.max(0, n));
+    setAdjust({
+      x: overX > 1 ? clamp(d.x - ((e.clientX - d.px) / overX) * 100) : 50,
+      y: overY > 1 ? clamp(d.y - ((e.clientY - d.py) / overY) * 100) : 50,
+    });
+  }
+
+  async function savePosition() {
+    if (!adjust || !cardPhoto) return;
+    setSavingPosition(true);
+    setError(null);
+    const card_bg = photoCardBg(cardPhoto, adjust.x, adjust.y);
+    const { error } = await supabase.from("artists").update({ card_bg }).eq("id", artist.id);
+    setSavingPosition(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setCard((c) => ({ ...c, card_bg }));
+    setAdjust(null);
+    router.refresh();
+  }
   const listens = rows.reduce((sum, w) => sum + w.listen_count, 0);
   const url = `https://siang.co/${artist.slug}`;
 
@@ -324,6 +378,7 @@ function ArtistPage({
       const { error } = await supabase.from("artists").update(next).eq("id", artist.id);
       if (error) throw error;
       setCard({ card_bg: next.card_bg, card_ink: next.card_ink });
+      startAdjust(next.card_bg);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not upload the card photo.");
@@ -512,16 +567,25 @@ function ArtistPage({
 
         <div className={st.body}>
           <button
-            className={`${ds.hero} ${st.heroBtn}`}
-            onClick={() => cardRef.current?.click()}
+            ref={heroRef}
+            className={`${ds.hero} ${st.heroBtn} ${adjust ? st.adjusting : ""}`}
+            onClick={() => !adjust && cardRef.current?.click()}
+            onPointerDown={(e) => {
+              if (!adjust) return;
+              drag.current = { px: e.clientX, py: e.clientY, ...adjust };
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={onAdjustMove}
+            onPointerUp={() => (drag.current = null)}
+            onPointerCancel={() => (drag.current = null)}
             disabled={uploading === "card"}
-            aria-label={hasCardPhoto ? "Change your card photo" : "Add a photo to your card"}
+            aria-label={adjust ? "Drag to move the photo" : hasCardPhoto ? "Change your card photo" : "Add a photo to your card"}
             type="button"
           >
             <span className={ds.side}>
               <CardFace
                 card={{
-                  cardBg: card.card_bg,
+                  cardBg: shownCardBg,
                   cardInk: card.card_ink,
                   based: artist.based ?? "",
                   country: artist.country ?? "",
@@ -537,21 +601,44 @@ function ArtistPage({
               )}
             </span>
             <span className={st.cardEdit}>
-              {CAMERA_ICON} {hasCardPhoto ? "Change photo" : "Add photo"}
+              {adjust ? (
+                <>
+                  {MOVE_ICON} Drag to move
+                </>
+              ) : (
+                <>
+                  {CAMERA_ICON} {hasCardPhoto ? "Change photo" : "Add photo"}
+                </>
+              )}
             </span>
           </button>
           <input ref={cardRef} type="file" accept="image/*" hidden onChange={changeCardPhoto} />
-          <p className={ds.fliphint}>
-            Tap the card to change its photo
-            {hasCardPhoto && (
-              <>
-                {" · "}
-                <button onClick={removeCardPhoto} style={{ textDecoration: "underline", fontSize: "inherit", color: "inherit" }} type="button">
-                  Remove
-                </button>
-              </>
-            )}
-          </p>
+          {adjust ? (
+            <div className={st.adjustBar}>
+              <button className={st.adjustCancel} onClick={() => setAdjust(null)} disabled={savingPosition} type="button">
+                Cancel
+              </button>
+              <button className={st.adjustSave} onClick={savePosition} disabled={savingPosition} type="button">
+                {savingPosition ? <Spinner size={14} /> : null} Save position
+              </button>
+            </div>
+          ) : (
+            <p className={ds.fliphint}>
+              Tap the card to change its photo
+              {hasCardPhoto && (
+                <>
+                  {" · "}
+                  <button onClick={() => startAdjust()} style={{ textDecoration: "underline", fontSize: "inherit", color: "inherit" }} type="button">
+                    Move
+                  </button>
+                  {" · "}
+                  <button onClick={removeCardPhoto} style={{ textDecoration: "underline", fontSize: "inherit", color: "inherit" }} type="button">
+                    Remove
+                  </button>
+                </>
+              )}
+            </p>
+          )}
 
           <div className={ds.dwho}>
             <button

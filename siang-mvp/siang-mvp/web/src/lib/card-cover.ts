@@ -5,8 +5,17 @@ export const PHOTO_CARD_INK = "#FCE7F1";
 
 export const PLAIN_CARD = { card_bg: "#000000", card_ink: "#ffffff", card_tint: "#333333" };
 
-export function photoCardBg(url: string) {
-  return `linear-gradient(180deg, rgba(20,8,14,0.25), rgba(20,8,14,0.82)), url("${url}") center/cover no-repeat`;
+// x/y are the photo's background-position in percent (50/50 = centred), set by
+// dragging the photo in the Studio.
+export function photoCardBg(url: string, x = 50, y = 50) {
+  const pct = (n: number) => `${Math.round(Math.min(100, Math.max(0, n)) * 10) / 10}%`;
+  return `linear-gradient(180deg, rgba(20,8,14,0.25), rgba(20,8,14,0.82)), url("${url}") ${pct(x)} ${pct(y)}/cover no-repeat`;
+}
+
+// Reads the position back out of a card background ("center" -> 50/50).
+export function photoPosition(cardBg: string): { x: number; y: number } {
+  const m = cardBg.match(/url\([^)]*\)\s+(-?[\d.]+)%\s+(-?[\d.]+)%/);
+  return m ? { x: +m[1], y: +m[2] } : { x: 50, y: 50 };
 }
 
 export function photoFromCardBg(cardBg: string): string | null {

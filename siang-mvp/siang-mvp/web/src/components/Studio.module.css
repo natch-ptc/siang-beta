@@ -231,3 +231,38 @@
   letter-spacing: -0.02em;
   text-decoration: none;
 }
+
+/* Repositioning the card photo: the card becomes a drag surface. */
+.adjusting {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.adjusting:active {
+  cursor: grabbing;
+}
+.adjustBar {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 0 2px;
+}
+.adjustCancel,
+.adjustSave {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.adjustCancel {
+  border: 1px solid var(--hair);
+  background: rgba(255, 255, 255, 0.5);
+}
+.adjustSave {
+  background: #000;
+  color: #fff;
+}
