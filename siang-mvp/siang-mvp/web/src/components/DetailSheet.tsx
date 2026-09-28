@@ -92,7 +92,7 @@ export default function DetailSheet({ card, position, onClose, onOpenExhibition,
                         <b>
                           {card.based}, {card.country}
                         </b>
-                        <span>{stamp(card.addedAt)}</span>
+                        <span>{stamp(card.addedAt, card.joinedTz)}</span>
                       </div>
                       <div className={styles.r2}>
                         <em>{card.name}</em>

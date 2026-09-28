@@ -1,13 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { clock } from "./format";
+import { clock, monthYear } from "./format";
 import type { ArtistCard, Artwork, Contact, Exhibition } from "./types";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-function monthYear(iso: string | null) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-}
 
 // ART keys happen to be the first slug segment for every seeded artist
 // (e.g. "anong-vetchakul" -> "anong"). Falls back to a plain colour tile for
@@ -30,6 +24,7 @@ type Row = {
   card_tint: string | null;
   avatar_url: string | null;
   joined_at: string | null;
+  joined_tz: string | null;
   artist_contacts: { kind: Contact["kind"]; value: string }[];
   exhibitions: {
     id: string;
@@ -57,7 +52,7 @@ type Row = {
 };
 
 const ARTIST_SELECT = `
-  id, slug, name, based, country, lat, lng, bio, card_bg, card_ink, card_tint, avatar_url, joined_at,
+  id, slug, name, based, country, lat, lng, bio, card_bg, card_ink, card_tint, avatar_url, joined_at, joined_tz,
   artist_contacts ( kind, value ),
   exhibitions ( id, slug, title, kind, year, venue, lat, lng ),
   artworks ( id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order, exhibition_artworks ( exhibition_id ) )
@@ -148,6 +143,7 @@ function rowToArtistCard(row: Row): ArtistCard {
     based: row.based ?? "",
     country: row.country ?? "",
     addedAt: row.joined_at ?? new Date().toISOString(),
+    joinedTz: row.joined_tz,
     cardBg: row.card_bg ?? "#000000",
     cardInk: row.card_ink ?? "#ffffff",
     tint: row.card_tint ?? "#333333",
@@ -155,7 +151,7 @@ function rowToArtistCard(row: Row): ArtistCard {
     avatarUrl: row.avatar_url,
     bio: row.bio ?? "",
     geo: geoQuery(row.lat, row.lng, [row.based, row.country].filter(Boolean).join(", ")),
-    joined: monthYear(row.joined_at),
+    joined: monthYear(row.joined_at, row.joined_tz),
     totalListens,
     contacts,
     art,

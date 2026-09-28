@@ -3,7 +3,7 @@ import type { ArtistCard } from "@/lib/types";
 import styles from "./CardStack.module.css";
 
 // Only the fields the face shows, so the Studio can preview a card before it's in the app's data.
-type CardFaceData = Pick<ArtistCard, "cardBg" | "cardInk" | "based" | "country" | "addedAt" | "name" | "slug">;
+type CardFaceData = Pick<ArtistCard, "cardBg" | "cardInk" | "based" | "country" | "addedAt" | "joinedTz" | "name" | "slug">;
 
 export default function CardFace({ card }: { card: CardFaceData }) {
   return (
@@ -12,7 +12,7 @@ export default function CardFace({ card }: { card: CardFaceData }) {
         <b>
           {card.based}, {card.country}
         </b>
-        <span>{stamp(card.addedAt)}</span>
+        <span>{stamp(card.addedAt, card.joinedTz)}</span>
       </div>
       <div className={styles.plate}>
         <em>{card.name}</em>

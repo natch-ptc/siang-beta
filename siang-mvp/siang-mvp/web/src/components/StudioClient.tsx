@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { clock, secs } from "@/lib/format";
+import { clock, monthYear, secs } from "@/lib/format";
 import {
   SIGN_OUT_ICON,
   EDIT_ICON,
@@ -56,6 +56,7 @@ export type StudioArtist = {
   card_ink: string;
   card_tint: string;
   joined_at: string | null;
+  joined_tz: string | null;
 };
 
 export type StudioLink = {
@@ -209,6 +210,7 @@ function CreateProfile() {
       lng: place.lng,
       bio: bio || null,
       ...PLAIN_CARD,
+      joined_tz: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
     });
 
     setBusy(false);
@@ -269,11 +271,6 @@ function contactValue(contacts: StudioContact[], kind: StudioContact["kind"]) {
   return contacts.find((c) => c.kind === kind)?.value ?? "";
 }
 
-function monthYear(iso: string | null) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return d.toLocaleString("en", { month: "short", year: "numeric", timeZone: "UTC" });
-}
 
 type OpenSheet = null | "profile" | "links" | "compose" | "exhibition" | { work: StudioArtwork } | { qr: StudioArtwork };
 
@@ -590,6 +587,7 @@ function ArtistPage({
                   based: artist.based ?? "",
                   country: artist.country ?? "",
                   addedAt: artist.joined_at ?? new Date().toISOString(),
+                  joinedTz: artist.joined_tz,
                   name: artist.name,
                   slug: artist.slug,
                 }}
@@ -698,7 +696,7 @@ function ArtistPage({
               )}
             </div>
             <span>
-              {[artist.based, artist.country].filter(Boolean).join(", ") || "Add where you're based"} · on Siang since {monthYear(artist.joined_at)}
+              {[artist.based, artist.country].filter(Boolean).join(", ") || "Add where you're based"} · on Siang since {monthYear(artist.joined_at, artist.joined_tz)}
             </span>
           </div>
 

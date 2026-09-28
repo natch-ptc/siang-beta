@@ -12,7 +12,7 @@ export default async function StudioPage() {
 
   const { data: artist } = await supabase
     .from("artists")
-    .select("id, slug, name, discipline, based, country, lat, lng, bio, avatar_url, card_bg, card_ink, card_tint, joined_at")
+    .select("id, slug, name, discipline, based, country, lat, lng, bio, avatar_url, card_bg, card_ink, card_tint, joined_at, joined_tz")
     .eq("user_id", userId)
     .maybeSingle<StudioArtist>();
 

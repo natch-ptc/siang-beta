@@ -35,6 +35,7 @@ export type ArtistCard = {
   based: string;
   country: string;
   addedAt: string; // ISO timestamp
+  joinedTz: string | null; // zone the card was made in; addedAt is shown in it
   cardBg: string; // css background (solid, gradient, or radial-gradient)
   cardInk: string;
   tint: string; // accent hex used to tint the player
