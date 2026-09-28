@@ -48,6 +48,7 @@ type Row = {
     duration_sec: number | null;
     description: string | null;
     cover_url: string | null;
+    audio_url: string | null;
     listen_count: number;
     sort_order: number;
     exhibition_artworks: { exhibition_id: string }[];
@@ -58,7 +59,7 @@ const ARTIST_SELECT = `
   id, slug, name, based, country, lat, lng, bio, card_bg, card_ink, card_tint, avatar_url, joined_at,
   artist_contacts ( kind, value ),
   exhibitions ( id, title, kind, year, venue, lat, lng ),
-  artworks ( id, slug, code, title, duration_sec, description, cover_url, listen_count, sort_order, exhibition_artworks ( exhibition_id ) )
+  artworks ( id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order, exhibition_artworks ( exhibition_id ) )
 `;
 
 export async function fetchArtists(supabase: SupabaseClient): Promise<ArtistCard[]> {
@@ -118,6 +119,7 @@ function rowToArtistCard(row: Row): ArtistCard {
         showIndex: exhibitionId ? showIndexById.get(exhibitionId) ?? -1 : -1,
         description: w.description ?? "",
         coverUrl: w.cover_url,
+        audioUrl: w.audio_url,
       };
     });
 

@@ -100,7 +100,7 @@ export default function ArtistPublicView({ artist, links }: { artist: ArtistCard
               ) : (
                 <div className={ds.shelf}>
                   {artist.art.map((w) => (
-                    <div key={w.id} className={ds.tile}>
+                    <Link key={w.id} href={`/${artist.slug}/${w.id}`} className={ds.tile}>
                       <span
                         className={`${ds.piece} ${w.coverUrl ? "" : styles.placeholderPiece}`}
                         style={w.coverUrl ? { background: `center/cover no-repeat url("${w.coverUrl}")` } : undefined}
@@ -112,7 +112,7 @@ export default function ArtistPublicView({ artist, links }: { artist: ArtistCard
                           <span>{artist.shows[w.showIndex].venue}</span>
                         </span>
                       )}
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

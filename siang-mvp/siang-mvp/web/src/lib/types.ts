@@ -10,6 +10,7 @@ export type Artwork = {
   showIndex: number; // which exhibition (index into ArtistCard.shows) this work hung in
   description: string;
   coverUrl: string | null; // artist-uploaded photo; falls back to generated line art when absent
+  audioUrl: string | null; // artist-uploaded sound; seeded works without one play a silent timer
 };
 
 export type Exhibition = {
