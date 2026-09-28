@@ -63,8 +63,13 @@ const ARTIST_SELECT = `
   artworks ( id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order, exhibition_artworks ( exhibition_id ) )
 `;
 
-export async function fetchArtists(supabase: SupabaseClient): Promise<ArtistCard[]> {
-  const { data, error } = await supabase.from("artists").select(ARTIST_SELECT).order("name");
+// "examples" are the seeded demo artists (no account owns them); "registered"
+// are artists who signed up and built their page in the Studio.
+export type ArtistSet = "examples" | "registered";
+
+export async function fetchArtists(supabase: SupabaseClient, set: ArtistSet): Promise<ArtistCard[]> {
+  const query = supabase.from("artists").select(ARTIST_SELECT).order("name");
+  const { data, error } = await (set === "examples" ? query.is("user_id", null) : query.not("user_id", "is", null));
 
   if (error) throw error;
   return (data as unknown as Row[]).map(rowToArtistCard);

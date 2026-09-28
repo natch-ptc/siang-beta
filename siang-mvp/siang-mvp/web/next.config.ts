@@ -1,36 +1,25 @@
-import { execSync } from "node:child_process";
 import type { NextConfig } from "next";
 
-// The beta number is 1.<commits since BASE>, so every commit that lands bumps
-// it and the public URL becomes /beta-1.N. BASE is the commit count at the
-// point /beta-1.1 was introduced.
-const BASE_COMMIT_COUNT = 39;
-
-function betaVersion() {
-  try {
-    const count = Number(execSync("git rev-list --count HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim());
-    if (Number.isInteger(count) && count > BASE_COMMIT_COUNT) return `1.${count - BASE_COMMIT_COUNT}`;
-  } catch {
-    // No git history available at build time (e.g. a source-only deploy).
-  }
-  return process.env.BETA_VERSION ?? "1.1";
-}
-
-const version = betaVersion();
-const betaPath = `/beta-${version}`;
+// The live beta lives at a fixed address, /beta-version-<BETA_VERSION>. Bump
+// this by hand when a new beta round starts; older addresses redirect here.
+// (It used to be /beta-1.<commit count>, which changed on every push.)
+const BETA_VERSION = "1.0";
+const betaPath = `/beta-version-${BETA_VERSION}`;
+const escaped = BETA_VERSION.replace(/\./g, "\\.");
 
 const nextConfig: NextConfig = {
-  env: { NEXT_PUBLIC_BETA_PATH: betaPath },
+  env: { NEXT_PUBLIC_BETA_PATH: betaPath, NEXT_PUBLIC_BETA_VERSION: BETA_VERSION },
   async redirects() {
     return [
       { source: "/mvp", destination: betaPath, permanent: false },
-      { source: "/demo", destination: betaPath, permanent: false },
-      // Any older /beta-x.y goes to the current one (the current path is excluded to avoid a loop).
-      { source: `/beta-:old((?!${version.replace(".", "\\.")}$)\\d+\\.\\d+)`, destination: betaPath, permanent: false },
+      // Old auto-numbered links (/beta-1.N) and any other beta version go to the current one.
+      { source: "/beta-:old(\\d+\\.\\d+)", destination: betaPath, permanent: false },
+      { source: `/beta-version-:v((?!${escaped}$).+)`, destination: betaPath, permanent: false },
     ];
   },
   async rewrites() {
     return [
+      // The live beta: registered artists only (app/mvp). The example cards are at /demo.
       { source: betaPath, destination: "/mvp" },
       // siang.co/app is the artist's own space: the studio (which sends signed-out visitors to /login).
       { source: "/app", destination: "/studio" },

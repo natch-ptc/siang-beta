@@ -16,11 +16,12 @@ const OP = [1, 1, 1, 1, 0.85, 0];
 
 type Props = {
   cards: ArtistCard[];
+  badge?: string; // "Demo" or "Beta 1.0", next to the logo
   onOpen: (card: ArtistCard) => void;
   onScan: () => void;
 };
 
-export default function CardStack({ cards, onOpen, onScan }: Props) {
+export default function CardStack({ cards, badge, onOpen, onScan }: Props) {
   const stackRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<HTMLDivElement[]>([]);
   const [active, setActive] = useState(0);
@@ -107,6 +108,7 @@ export default function CardStack({ cards, onOpen, onScan }: Props) {
           className={styles.logo}
           priority
         />
+        {badge && <span className={styles.badge}>{badge}</span>}
         <Link href="/app" className={styles.me} aria-label="Your studio">
           {USER_ICON}
         </Link>

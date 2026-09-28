@@ -23,6 +23,20 @@
   height: 20px;
   width: auto;
 }
+.badge {
+  margin-left: 8px;
+  margin-right: auto;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--hair);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
 
 .me {
   position: relative;

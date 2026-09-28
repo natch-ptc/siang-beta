@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { DEMO_PATH } from "@/lib/beta";
 import styles from "./PaperLanding.module.css";
 
 type Paper = {
@@ -58,7 +59,6 @@ const PAPERS: Paper[] = [
   },
 ];
 
-const DEMO_HREF = process.env.NEXT_PUBLIC_BETA_PATH ?? "/demo";
 
 export default function PaperLanding() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -92,7 +92,7 @@ export default function PaperLanding() {
           <div className={styles.hint} style={{ opacity: hintGone ? 0 : 1 }}>
             Drag the papers around
           </div>
-          <Link href={DEMO_HREF} className={styles.cta}>
+          <Link href={DEMO_PATH} className={styles.cta}>
             Try the demo
           </Link>
           <Link href="/join-beta" className={`${styles.cta} ${styles.ctaBrand}`}>
