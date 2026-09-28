@@ -11,6 +11,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function JoinBeta() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [instagram, setInstagram] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ email: string; alreadyJoined: boolean } | null>(null);
@@ -35,7 +36,7 @@ export default function JoinBeta() {
       const res = await fetch("/api/beta-testers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, email: trimmedEmail, source: "landing-join-beta" }),
+        body: JSON.stringify({ name: trimmedName, email: trimmedEmail, handle: instagram.trim(), source: "landing-join-beta" }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -96,6 +97,21 @@ export default function JoinBeta() {
                     placeholder="you@example.com"
                     autoComplete="email"
                     inputMode="email"
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>
+                    Instagram <em>(optional)</em>
+                  </span>
+                  <input
+                    type="text"
+                    name="instagram"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    placeholder="@yourname"
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
                   />
                 </label>
 

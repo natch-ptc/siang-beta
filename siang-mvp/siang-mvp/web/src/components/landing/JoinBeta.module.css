@@ -67,6 +67,11 @@
   font-size: var(--fs-caption);
   font-weight: var(--w-medium);
 }
+.field em {
+  font-style: normal;
+  font-weight: var(--w-regular);
+  color: var(--ink-muted);
+}
 .field input {
   height: 48px;
   padding: 0 14px;
