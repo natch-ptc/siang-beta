@@ -18,7 +18,7 @@ export type Exhibition = {
   kind: "Solo" | "Group";
   year: number;
   venue: string;
-  geo: string; // "lat,lng"
+  geo: string; // Google Maps query: "lat,lng", or a place name when there are no coordinates
 };
 
 export type Contact = {

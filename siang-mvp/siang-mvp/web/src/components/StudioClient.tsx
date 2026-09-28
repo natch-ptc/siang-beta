@@ -31,6 +31,7 @@ import {
 } from "@/lib/icons";
 import { QRCodeCanvas } from "qrcode.react";
 import { slugify, slugProblem, SLUG_MAX } from "@/lib/slug";
+import { COUNTRIES, findCity, findCountry } from "@/lib/places";
 import { BETA_PATH } from "@/lib/beta";
 import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg } from "@/lib/card-cover";
 import CardFace from "./CardFace";
@@ -46,6 +47,8 @@ export type StudioArtist = {
   discipline: string | null;
   based: string | null;
   country: string | null;
+  lat: number | null;
+  lng: number | null;
   bio: string | null;
   avatar_url: string | null;
   card_bg: string;
@@ -169,8 +172,7 @@ function CreateProfile() {
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [discipline, setDiscipline] = useState("");
-  const [based, setBased] = useState("");
-  const [country, setCountry] = useState("");
+  const [place, setPlace] = useState<Place>({ based: "", country: "Thailand", lat: null, lng: null });
   const [bio, setBio] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,8 +201,10 @@ function CreateProfile() {
       slug,
       name,
       discipline: discipline || null,
-      based: based || null,
-      country: country || null,
+      based: place.based.trim() || null,
+      country: place.country.trim() || null,
+      lat: place.lat,
+      lng: place.lng,
       bio: bio || null,
       ...PLAIN_CARD,
     });
@@ -240,14 +244,7 @@ function CreateProfile() {
         <Field label="Discipline">
           <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} placeholder="e.g. Ceramics" />
         </Field>
-        <div style={styles.row}>
-          <Field label="Based in">
-            <input style={styles.input} value={based} onChange={(e) => setBased(e.target.value)} placeholder="City" />
-          </Field>
-          <Field label="Country">
-            <input style={styles.input} value={country} onChange={(e) => setCountry(e.target.value)} />
-          </Field>
-        </div>
+        <PlacePicker value={place} onChange={setPlace} />
         <Field label="Bio">
           <textarea style={styles.textarea} value={bio} onChange={(e) => setBio(e.target.value)} rows={4} />
         </Field>
@@ -764,8 +761,7 @@ function EditProfileForm({
   const [name, setName] = useState(artist.name);
   const [slug, setSlug] = useState(artist.slug);
   const [discipline, setDiscipline] = useState(artist.discipline ?? "");
-  const [based, setBased] = useState(artist.based ?? "");
-  const [country, setCountry] = useState(artist.country ?? "");
+  const [place, setPlace] = useState<Place>({ based: artist.based ?? "", country: artist.country ?? "", lat: artist.lat, lng: artist.lng });
   const [bio, setBio] = useState(artist.bio ?? "");
   const [ig, setIg] = useState(contactValue(contacts, "ig") ? "@" + contactValue(contacts, "ig") : "");
   const [line, setLine] = useState(contactValue(contacts, "line"));
@@ -800,8 +796,10 @@ function EditProfileForm({
         name: trimmedName,
         slug,
         discipline: discipline.trim() || null,
-        based: based.trim() || null,
-        country: country.trim() || null,
+        based: place.based.trim() || null,
+        country: place.country.trim() || null,
+        lat: place.lat,
+        lng: place.lng,
         bio: bio.trim() || null,
       })
       .eq("id", artist.id);
@@ -838,17 +836,10 @@ function EditProfileForm({
           ? `QR codes and links you already shared point to siang.co/${artist.slug} and will stop working.`
           : "Changing your name doesn't change your link."}
       </p>
-      <div style={styles.row}>
-        <Field label="Discipline">
-          <input style={{ ...styles.input, minWidth: 0 }} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
-        </Field>
-        <Field label="Based in">
-          <input style={{ ...styles.input, minWidth: 0 }} value={based} onChange={(e) => setBased(e.target.value)} />
-        </Field>
-      </div>
-      <Field label="Country">
-        <input style={styles.input} value={country} onChange={(e) => setCountry(e.target.value)} />
+      <Field label="Discipline">
+        <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
       </Field>
+      <PlacePicker value={place} onChange={setPlace} />
       <label style={styles.label}>
         <span style={{ display: "flex", justifyContent: "space-between" }}>
           Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
@@ -1568,6 +1559,88 @@ function NewExhibitionForm({
   );
 }
 
+type Place = { based: string; country: string; lat: number | null; lng: number | null };
+const OTHER = "__other";
+
+// Country and city dropdowns (lib/places.ts). Picking a listed city also saves
+// its coordinates, so the location pill on the artist's page opens the right
+// spot in Google Maps. "Other…" falls back to typing.
+function PlacePicker({ value, onChange }: { value: Place; onChange: (p: Place) => void }) {
+  const country = findCountry(value.country);
+  const [typingCountry, setTypingCountry] = useState(!!value.country && !country);
+  const [typingCity, setTypingCity] = useState(!!value.based && !findCity(country, value.based));
+  const cityListed = !!country && !typingCountry;
+
+  return (
+    <div style={styles.row}>
+      <label style={styles.label}>
+        Country
+        <select
+          style={styles.select}
+          value={typingCountry ? OTHER : country?.name ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            setTypingCountry(v === OTHER);
+            setTypingCity(false);
+            onChange({ based: "", country: v === OTHER ? "" : v, lat: null, lng: null });
+          }}
+        >
+          <option value="" disabled>
+            Choose…
+          </option>
+          {COUNTRIES.map((co) => (
+            <option key={co.name} value={co.name}>
+              {co.name}
+            </option>
+          ))}
+          <option value={OTHER}>Other…</option>
+        </select>
+        {typingCountry && (
+          <input style={styles.input} placeholder="Country" value={value.country} onChange={(e) => onChange({ ...value, country: e.target.value })} />
+        )}
+      </label>
+      <label style={styles.label}>
+        City
+        {cityListed ? (
+          <select
+            style={styles.select}
+            value={typingCity ? OTHER : findCity(country, value.based)?.name ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === OTHER) {
+                setTypingCity(true);
+                onChange({ ...value, based: "", lat: null, lng: null });
+                return;
+              }
+              setTypingCity(false);
+              const city = findCity(country, v);
+              onChange({ ...value, based: v, lat: city?.lat ?? null, lng: city?.lng ?? null });
+            }}
+          >
+            <option value="" disabled>
+              Choose…
+            </option>
+            {country!.cities.map((ci) => (
+              <option key={ci.name} value={ci.name}>
+                {ci.name}
+              </option>
+            ))}
+            <option value={OTHER}>Other…</option>
+          </select>
+        ) : null}
+        {(!cityListed || typingCity) && (
+          <input
+            style={styles.input}
+            placeholder="City"
+            value={value.based}
+            onChange={(e) => onChange({ ...value, based: e.target.value, lat: null, lng: null })}
+          />
+        )}
+      </label>
+    </div>
+  );
+}
+
 // "siang.co/[slug]" input: lowercases and swaps spaces for dashes as you type.
 function SlugField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -1652,6 +1725,20 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
+  },
+  select: {
+    width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
+    height: 42,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.06)",
+    color: "#fff",
+    padding: "0 10px",
+    fontSize: 14.5,
+    fontFamily: "inherit",
+    colorScheme: "dark",
   },
   slugWrap: {
     display: "flex",

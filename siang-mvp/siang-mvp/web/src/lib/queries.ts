@@ -89,6 +89,13 @@ export async function fetchArtistBySlug(
   return { artist: rowToArtistCard(row), links };
 }
 
+// What the map pills search Google Maps for: exact coordinates when we have
+// them, otherwise the place's name (artists and shows added in the Studio
+// before it saved coordinates would otherwise land on 0,0).
+function geoQuery(lat: number | null, lng: number | null, name: string | null) {
+  return lat != null && lng != null ? `${lat},${lng}` : name ?? "";
+}
+
 function rowToArtistCard(row: Row): ArtistCard {
   const shows: Exhibition[] = [...row.exhibitions]
     .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
@@ -97,7 +104,7 @@ function rowToArtistCard(row: Row): ArtistCard {
       kind: sh.kind === "solo" ? "Solo" : "Group",
       year: sh.year ?? 0,
       venue: sh.venue ?? "",
-      geo: `${sh.lat ?? 0},${sh.lng ?? 0}`,
+      geo: geoQuery(sh.lat, sh.lng, sh.venue),
     }));
   // map from DB exhibition id -> index in the sorted `shows` array above
   const showIndexById = new Map(
@@ -139,7 +146,7 @@ function rowToArtistCard(row: Row): ArtistCard {
     markId: markIdFromSlug(row.slug),
     avatarUrl: row.avatar_url,
     bio: row.bio ?? "",
-    geo: `${row.lat ?? 0},${row.lng ?? 0}`,
+    geo: geoQuery(row.lat, row.lng, [row.based, row.country].filter(Boolean).join(", ")),
     joined: monthYear(row.joined_at),
     monthlyListeners,
     contacts,
