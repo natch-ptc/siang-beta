@@ -106,9 +106,9 @@
 /* ── Chips: the underlined filter row under the logo ────── */
 .chips {
   display: flex;
-  gap: 4px;
+  gap: 0;
   margin-top: 14px;
-  padding: 0 calc(var(--gutter) - 8px);
+  padding: 0 calc(var(--gutter) - 5px);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -120,10 +120,10 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   height: var(--hit);
-  padding: 0 8px;
-  font-size: 14px;
+  padding: 0 5px;
+  font-size: 13.5px;
   font-weight: 500;
   white-space: nowrap;
   color: var(--fg);
@@ -132,8 +132,8 @@
 .chip::after {
   content: "";
   position: absolute;
-  left: 8px;
-  right: 8px;
+  left: 5px;
+  right: 5px;
   bottom: 6px;
   height: 2px;
   border-radius: 2px;
@@ -559,4 +559,16 @@
 }
 .tabOn {
   background: var(--paper-press);
+}
+
+/* Small phones (iPhone SE, mini): keep a five-chip row on one screen. */
+@media (max-width: 385px) {
+  .chip {
+    font-size: 12.5px;
+    padding: 0 4px;
+  }
+  .chip::after {
+    left: 4px;
+    right: 4px;
+  }
 }

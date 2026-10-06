@@ -30,6 +30,7 @@ import {
   SHOWS_CHIP,
   COLLECTION_CHIP,
   ABOUT_CHIP,
+  SAVE_ICON,
   contactIcon,
 } from "@/lib/icons";
 import { ART_TYPES } from "@/lib/art-types";
@@ -1008,6 +1009,10 @@ function ArtistPage({
             {t.icon} {t.label}
           </button>
         ))}
+        {/* Not a tab of this page: the artist's own list of saved works (siang.co/saved). */}
+        <Link href="/saved" className={app.chip}>
+          {SAVE_ICON} Saved
+        </Link>
       </div>
 
       {tab === "art" && (

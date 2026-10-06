@@ -77,13 +77,6 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
         </a>
       )}
 
-      {own && (
-        <Link href="/saved" className={styles.place}>
-          {SAVE_ICON}
-          Your list: works you saved, saw and artists you follow
-        </Link>
-      )}
-
       <div className={app.chips} role="tablist" aria-label={`${artist.name}'s page`}>
         {TABS.map((t) => (
           <button
@@ -97,6 +90,12 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
             {t.icon} {t.label}
           </button>
         ))}
+        {/* Not a tab of this page: the artist's own list of saved works (siang.co/saved). */}
+        {own && (
+          <Link href="/saved" className={app.chip}>
+            {SAVE_ICON} Saved
+          </Link>
+        )}
       </div>
 
       {tab === "art" &&
