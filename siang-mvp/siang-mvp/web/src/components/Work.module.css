@@ -133,6 +133,15 @@
   color: var(--fg-faint);
 }
 
+.credit {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fg-faint);
+  overflow-wrap: anywhere;
+}
+
 .story {
   margin-top: 30px;
   font-family: var(--font-thai);

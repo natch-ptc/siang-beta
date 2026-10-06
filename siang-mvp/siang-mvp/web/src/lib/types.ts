@@ -9,6 +9,7 @@ export type Work = {
   description: string;
   coverUrl: string | null;
   audioUrl: string | null;
+  soundCredit: string | null; // set when the sound is an example for the demo, not the artist's own (lib/demo-sounds.ts)
   durationSec: number;
   listenCount: number;
   createdAt: string; // ISO timestamp, shown as "28 NOV 2025"

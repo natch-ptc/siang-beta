@@ -86,6 +86,7 @@ export default async function WorkPage({ params }: Props) {
 
         {/* A work with no sound still looks finished: the picture and the text lead (PRD 10). */}
         {track && <WavePlayer track={track} seed={work.code} />}
+        {work.soundCredit && <p className={styles.credit}>Example sound for the demo: {work.soundCredit}</p>}
         {work.description && <p className={styles.story}>{work.description}</p>}
 
         <div className={styles.acts}>

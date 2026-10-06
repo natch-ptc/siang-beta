@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { demoSound } from "./demo-sounds";
 import type { Artist, ArtistLink, Contact, Show, Work } from "./types";
 
 type Row = {
   id: string;
+  user_id: string | null;
   slug: string;
   name: string;
   discipline: string | null;
@@ -73,7 +75,7 @@ export async function withV3Fallback<T>(
 }
 
 const artistSelect = (v3: boolean) => `
-  id, slug, name, discipline, based, country, lat, lng, bio, card_bg, card_ink, avatar_url, joined_at, joined_tz,
+  id, user_id, slug, name, discipline, based, country, lat, lng, bio, card_bg, card_ink, avatar_url, joined_at, joined_tz,
   artist_contacts ( kind, value ),
   artist_links ( label, url, sort_order ),
   exhibitions ( id, slug, title, kind, year, venue, lat, lng, cover_url${v3 ? ", " + SHOW_V3_COLUMNS : ""} ),
@@ -144,6 +146,9 @@ function rowToArtist(row: Row): Artist {
   const artworks = [...row.artworks].sort((a, b) => a.sort_order - b.sort_order);
   const slugByShowId = new Map(row.exhibitions.map((sh) => [sh.id, sh.slug] as const));
 
+  // Only the seeded demo artists (no account owns them) borrow an example sound.
+  const example = row.user_id ? null : demoSound(row.slug);
+
   const works: Work[] = artworks.map((w) => ({
     id: w.slug,
     dbId: w.id,
@@ -151,8 +156,9 @@ function rowToArtist(row: Row): Artist {
     title: w.title,
     description: w.description ?? "",
     coverUrl: w.cover_url,
-    audioUrl: w.audio_url,
-    durationSec: w.duration_sec ?? 0,
+    audioUrl: w.audio_url ?? example?.url ?? null,
+    soundCredit: w.audio_url ? null : example?.credit ?? null,
+    durationSec: w.audio_url ? w.duration_sec ?? 0 : example?.seconds ?? 0,
     listenCount: w.listen_count,
     createdAt: w.created_at,
     year: w.year ?? null,
