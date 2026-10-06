@@ -1,26 +1,41 @@
-// Shape mirrors the tables in supabase/migrations/0001_init.sql; rows are
-// mapped into it by rowToArtistCard in lib/queries.ts.
+// Shape mirrors the tables in supabase/migrations; rows are mapped into it by
+// rowToArtist in lib/queries.ts.
 
-export type Artwork = {
+export type Work = {
   id: string; // the work's slug, used in its URL (siang.co/<artist>/<id>)
   dbId: string; // artworks.id — what listens are counted against
-  code: string; // six-digit code printed under the work's QR — see 0001_init.sql's makeCode()
+  code: string; // six-digit work code printed under the work's QR, kept for life
   title: string;
-  durationLabel: string; // "3:12"
-  listenCount: number;
-  showIndex: number; // which exhibition (index into ArtistCard.shows) this work hung in
   description: string;
-  coverUrl: string | null; // artist-uploaded photo; falls back to generated line art when absent
-  audioUrl: string | null; // artist-uploaded sound; seeded works without one play a silent timer
+  coverUrl: string | null;
+  audioUrl: string | null;
+  durationSec: number;
+  listenCount: number;
+  createdAt: string; // ISO timestamp, shown as "28 NOV 2025"
+  year: number | null;
+  medium: string;
+  heightCm: number | null;
+  widthCm: number | null;
+  depthCm: number | null;
+  showSlugs: string[]; // the exhibitions and collections this work is in
 };
 
-export type Exhibition = {
+// One row of `exhibitions`. With a venue it is an exhibition (a place and,
+// usually, dates); without one it is a collection the artist pulled together.
+export type Show = {
   slug: string; // its address: siang.co/<artist>/shows/<slug>
   title: string;
-  kind: "Solo" | "Group";
-  year: number;
+  kind: "solo" | "group";
+  year: number | null;
   venue: string;
-  geo: string; // Google Maps query: "lat,lng", or a place name when there are no coordinates
+  city: string;
+  geo: string; // Google Maps query: "lat,lng", or the venue's name when there are no coordinates
+  coverUrl: string | null;
+  startsOn: string | null; // "2026-01-01"
+  endsOn: string | null;
+  hours: string;
+  entry: string;
+  workIds: string[]; // Work.id of the works in it, in the artist's order
 };
 
 export type Contact = {
@@ -28,24 +43,27 @@ export type Contact = {
   value: string;
 };
 
-export type ArtistCard = {
+export type ArtistLink = { label: string; url: string };
+
+export type Artist = {
   id: string;
-  slug: string;
+  slug: string; // the handle: siang.co/<slug>, shown as @slug
   name: string;
+  artType: string; // main art type (artists.discipline)
   based: string;
   country: string;
-  addedAt: string; // ISO timestamp
-  joinedTz: string | null; // zone the card was made in; addedAt is shown in it
-  cardBg: string; // css background (solid, gradient, or radial-gradient)
-  cardInk: string;
-  tint: string; // accent hex used to tint the player
-  markId: string; // key into ART (lib/artwork-art.ts)
-  avatarUrl: string | null; // artist-uploaded photo; falls back to the drawn mark when absent
-  bio: string;
   geo: string;
-  joined: string; // "Feb 2025"
+  bio: string;
+  avatarUrl: string | null;
+  cardBg: string; // css background of the artist's card
+  cardInk: string;
+  joinedAt: string; // ISO timestamp
+  joinedTz: string | null; // zone the card was made in; joinedAt is shown in it
   totalListens: number;
   contacts: Contact[];
-  art: Artwork[];
-  shows: Exhibition[];
+  links: ArtistLink[];
+  works: Work[];
+  shows: Show[]; // exhibitions and collections together; see isCollection()
 };
+
+export const isCollection = (show: Show) => !show.venue;

@@ -1,20 +1,25 @@
 import Link from "next/link";
-import styles from "@/components/ArtistPublicView.module.css";
+import Logo from "@/components/Logo";
+import app from "@/components/app.module.css";
 
-export default function ArtistNotFound() {
+// Shown for an address nobody has: an unknown artist, work or exhibition.
+export default function NotFound() {
   return (
-    <main className={styles.page}>
-      <div className={styles.column} style={{ padding: "96px 24px", textAlign: "center" }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em" }}>No artist here yet</h1>
-        <p style={{ marginTop: 10, fontSize: 15, color: "var(--ink-soft)", lineHeight: 1.5 }}>
-          Check the link, or claim this address for your own work.
-        </p>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 22 }}>
-          <Link href="/" className={styles.openApp}>
-            Siang home
+    <main className={`${app.app} ${app.appBare}`}>
+      <header className={app.top}>
+        <Link href="/" className={app.logoLink}>
+          <Logo height={30} />
+        </Link>
+      </header>
+      <div className={app.empty}>
+        <h2>Nothing at this address</h2>
+        <p>Check the link, or type the six-digit code printed on the label.</p>
+        <div className={app.emptyActs}>
+          <Link href="/" className={app.btn}>
+            Explore art
           </Link>
-          <Link href="/login?mode=signup" className={styles.openApp} style={{ background: "#000", color: "#fff", borderColor: "#000" }}>
-            Make your page
+          <Link href="/w" className={app.btnGhost}>
+            Type a code
           </Link>
         </div>
       </div>

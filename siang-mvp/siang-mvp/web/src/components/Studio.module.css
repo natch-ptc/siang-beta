@@ -1,39 +1,135 @@
-/* The Studio shows the artist their page the way visitors see it (the detail
-   sheet in the app, whose styles it reuses) with edit controls on top. These
-   are only the Studio-specific additions. */
+/* The Studio is the artist's profile as visitors see it (Profile.module.css
+   and app.module.css) with edit controls on top. These are only the
+   Studio-specific additions. */
 
-.page {
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: linear-gradient(180deg, #efefed, #d3d3d1);
-}
-
-.column {
-  max-width: 520px;
-  margin: 0 auto;
-  padding-top: calc(10px + env(safe-area-inset-top));
-}
-
-.topLeft {
+.bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 12px 0 10px;
+}
+.barTitle {
+  flex: 1;
   min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .body {
   padding: 0 18px;
 }
 
-/* The card is one big button: tap it to change the photo. */
-.heroBtn {
-  display: block;
-  width: 100%;
-  padding: 0;
-  text-align: left;
+.error {
+  margin: 12px var(--gutter) 0;
+  font-size: 13.5px;
+  color: var(--danger);
+}
+
+/* The avatar is a button: tap it to change the photo. */
+.avatarBtn {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  color: var(--fg-soft);
   cursor: pointer;
 }
-/* Bottom-right, where the real card has its flip button, so it never covers the name or date. */
+.avatarBadge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  color: var(--on-paper);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.avatarBadge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.addHint {
+  min-height: 32px;
+  font-size: 14px;
+  color: var(--fg-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dashed {
+  box-shadow: none;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  color: var(--fg-soft);
+}
+
+/* The first tile of the Art tab: upload a work. */
+.addTile {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  background: none;
+  color: var(--fg-soft);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: center;
+}
+.addTile::before {
+  display: none;
+}
+
+/* The camera on an exhibition's card: change its cover. Sits above the
+   card-wide edit button. */
+.showCover {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 10px;
+  width: var(--hit);
+  height: var(--hit);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(28, 28, 28, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  cursor: pointer;
+}
+
+.sectionTitle {
+  margin: 30px 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* The artist's card is one big button: tap it to change the photo. */
+.hero {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.585 / 1;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+/* Bottom-right, so it never covers the name or the date. */
 .cardEdit {
   position: absolute;
   bottom: 12px;
@@ -45,11 +141,25 @@
   height: 32px;
   padding: 0 12px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
   color: #fff;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.cardHint {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+.textBtn {
+  min-height: 32px;
+  font-size: inherit;
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Covers an image while its replacement uploads. */
@@ -73,108 +183,12 @@
   }
 }
 
-.avatarBtn {
-  padding: 0;
-  cursor: pointer;
-  background: #d9d7d2 center/cover no-repeat;
-  color: rgba(0, 0, 0, 0.55);
-  overflow: visible;
-}
-.avatarBadge {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: #000;
-  color: #fff;
-  box-shadow: 0 0 0 2px #e6e6e3;
-}
-.avatarBadge svg {
-  width: 12px;
-  height: 12px;
-}
-
-.addHint {
-  margin-top: 14px;
-  font-size: 15px;
-  color: var(--ink-soft);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.dashed {
-  border-style: dashed;
-  color: var(--ink-soft);
-}
-
-.addPiece {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.35);
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 12.5px;
-  font-weight: 600;
-  text-align: center;
-  padding: 8px;
-}
-
-.placeholderPiece {
-  background: linear-gradient(160deg, #2a2a2c, #111);
-}
-
-.darkAdd {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  margin-top: 18px;
-  padding: 0 14px 0 12px;
-  border-radius: 999px;
-  border: 1px dashed rgba(255, 255, 255, 0.35);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.showRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.showCover {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  flex: none;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.06) center/cover no-repeat;
-  color: rgba(255, 255, 255, 0.6);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-
-.empty {
-  font-size: 13.5px;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-/* Loading state (app/studio/loading.tsx): a shimmering card placeholder. */
-.skeletonCard {
-  margin-top: 56px;
-  width: 100%;
-  aspect-ratio: 1.585 / 1;
-  border-radius: 16px;
-  background: linear-gradient(100deg, #dcdcd9 30%, #ececea 50%, #dcdcd9 70%);
+/* Loading state (app/studio/loading.tsx): a shimmering profile placeholder. */
+.skeleton {
+  margin: 20px var(--gutter) 0;
+  height: 200px;
+  border-radius: var(--radius-tile);
+  background: linear-gradient(100deg, #1b1b1b 30%, #2a2a2a 50%, #1b1b1b 70%);
   background-size: 300% 100%;
   animation: shimmer 1.3s ease-in-out infinite;
 }
@@ -193,42 +207,44 @@
   gap: 8px;
   margin-top: 18px;
   font-size: 13px;
-  color: var(--ink-soft);
+  color: var(--fg-soft);
 }
 
-/* Sticky confirmation at the bottom: everything is already saved, this takes
+/* Fixed confirmation at the bottom: everything is already saved, this takes
    the artist to their public page to see the result. */
 .doneBar {
-  position: sticky;
-  bottom: 0;
-  z-index: 20;
-  max-width: 520px;
-  margin: 0 auto;
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(360px, calc(100% - 36px));
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(0, 0, 0, 0.82);
+  padding: 10px 10px 10px 20px;
+  border-radius: 999px;
+  background: rgba(38, 38, 38, 0.92);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.7);
 }
 .doneNote {
   font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--fg-soft);
 }
 .doneBtn {
   flex: none;
-  height: 44px;
+  height: 46px;
   padding: 0 20px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  background: #b63878;
-  color: #fff;
+  background: var(--paper);
+  color: var(--on-paper);
   font-size: 14.5px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -249,20 +265,19 @@
 }
 .adjustCancel,
 .adjustSave {
-  height: 36px;
-  padding: 0 16px;
+  height: var(--hit);
+  padding: 0 18px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13.5px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
 }
 .adjustCancel {
-  border: 1px solid var(--hair);
-  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 .adjustSave {
-  background: #000;
-  color: #fff;
+  background: var(--paper);
+  color: var(--on-paper);
 }

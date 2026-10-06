@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { clock, monthYear, secs } from "@/lib/format";
+import { clock, dayMonthYear, monthYear, secs, showWhenText } from "@/lib/format";
 import {
   SIGN_OUT_ICON,
   EDIT_ICON,
@@ -19,26 +19,30 @@ import {
   VIDEO_ICON,
   TEXT_ICON,
   LINK_ICON,
-  DOWNLOAD_ICON,
   SHARE_GLYPH,
   QR_GLYPH,
   UP_ICON,
   DOWN_ICON,
   MOVE_ICON,
-  PIN,
-  contactIcon,
-  contactHref,
-  contactLabel,
+  PIN_SM,
+  CALENDAR_SM,
+  ART_CHIP,
+  SHOWS_CHIP,
+  COLLECTION_CHIP,
+  ABOUT_CHIP,
 } from "@/lib/icons";
-import { QRCodeCanvas } from "qrcode.react";
+import { ART_TYPES } from "@/lib/art-types";
 import { slugify, slugProblem, SLUG_MAX } from "@/lib/slug";
 import { COUNTRIES, findCity, findCountry } from "@/lib/places";
-import { BETA_PATH } from "@/lib/beta";
 import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg, photoPosition } from "@/lib/card-cover";
+import type { ShareInfo } from "@/lib/share";
 import CardFace from "./CardFace";
+import { ShareSheet } from "./ShareButton";
 import Spinner from "./Spinner";
-// The Studio reuses the detail sheet's styles so the artist edits their page as visitors see it.
-import ds from "./DetailSheet.module.css";
+// The Studio is the artist's profile as visitors see it (ArtistProfile), with
+// edit controls on top, so it shares the profile's and the app's styles.
+import app from "./app.module.css";
+import pf from "./Profile.module.css";
 import st from "./Studio.module.css";
 
 export type StudioArtist = {
@@ -66,6 +70,8 @@ export type StudioLink = {
   sort_order: number;
 };
 
+// The fields added by supabase/migrations/0015_v3_fields.sql are optional
+// here: they are missing from rows read before that migration has run.
 export type StudioArtwork = {
   id: string;
   slug: string;
@@ -77,6 +83,12 @@ export type StudioArtwork = {
   audio_url: string | null;
   listen_count: number;
   sort_order: number;
+  created_at: string;
+  year?: number | null;
+  medium?: string | null;
+  height_cm?: number | null;
+  width_cm?: number | null;
+  depth_cm?: number | null;
 };
 
 export type StudioContact = {
@@ -84,6 +96,7 @@ export type StudioContact = {
   value: string;
 };
 
+// A row with a venue is an exhibition; without one it is a collection.
 export type StudioExhibition = {
   id: string;
   slug: string;
@@ -92,11 +105,43 @@ export type StudioExhibition = {
   year: number | null;
   venue: string | null;
   cover_url: string | null;
+  starts_on?: string | null;
+  ends_on?: string | null;
+  city?: string | null;
+  hours?: string | null;
+  entry?: string | null;
   exhibition_artworks: { artwork_id: string }[];
+};
+
+type WorkDetails = { year: number | null; medium: string | null; height_cm: number | null; width_cm: number | null; depth_cm: number | null };
+
+type ShowFields = {
+  title: string;
+  slug: string;
+  kind: "solo" | "group";
+  venue: string | null; // null makes it a collection
+  year: number | null;
+  city: string | null;
+  starts_on: string | null;
+  ends_on: string | null;
+  hours: string | null;
+  entry: string | null;
+  workIds: string[];
 };
 
 const makeCode = () => String(100000 + Math.floor(Math.random() * 899999));
 const BIO_LIMIT = 160;
+const WORK_COLUMNS = "id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order, created_at";
+
+// The database says a column is unknown when migration 0015 has not been run yet.
+const isMissingColumn = (error: { code?: string } | null) => error?.code === "PGRST204" || error?.code === "42703";
+const NEEDS_MIGRATION = "Siang's database needs its latest update before these details can be saved. Please tell the Siang team.";
+
+// Leaves the v3 columns out of a write when there is nothing to put in them,
+// so the write also works on a database that doesn't have them yet.
+function withFilled<T extends Record<string, unknown>>(fields: T, keep: boolean): Partial<T> {
+  return keep || Object.values(fields).some((v) => v != null) ? fields : {};
+}
 
 // Uploads to the shared public "media" bucket under the signed-in user's own
 // folder (storage RLS restricts writes to "{auth.uid()}/..." — see
@@ -137,28 +182,24 @@ export default function StudioClient({
 
   async function signOut() {
     await supabase.auth.signOut();
-    router.push(BETA_PATH);
+    router.push("/");
     router.refresh();
   }
 
   if (!artist) {
     return (
-      <main className={st.page}>
-        <div className={st.column}>
-          <div className={ds.detailTop}>
-            <Link href={BETA_PATH} className={ds.close} aria-label="Back to Pocket">
-              {BACK_CHEVRON_SVG}
-            </Link>
-            <div className={ds.dtActs} style={{ alignItems: "center" }}>
-              <span className={ds.k}>{email}</span>
-              <button className={ds.close} onClick={signOut} aria-label="Sign out" type="button">
-                {SIGN_OUT_ICON}
-              </button>
-            </div>
-          </div>
-          <div className={st.body}>
-            <CreateProfile />
-          </div>
+      <main className={`${app.app} ${app.appBare}`}>
+        <div className={st.bar}>
+          <Link href="/" className={app.iconBtn} aria-label="Back to Siang">
+            {BACK_CHEVRON_SVG}
+          </Link>
+          <span className={st.barTitle}>{email}</span>
+          <button className={app.iconBtn} onClick={signOut} aria-label="Sign out" type="button">
+            {SIGN_OUT_ICON}
+          </button>
+        </div>
+        <div className={st.body}>
+          <CreateProfile />
         </div>
       </main>
     );
@@ -223,8 +264,8 @@ function CreateProfile() {
 
   return (
     <section style={styles.darkCard}>
-      <h1 style={styles.h1}>Set up your artist profile</h1>
-      <p style={styles.sub}>This becomes your public card on Pocket. You can add a card photo right after.</p>
+      <h1 style={styles.h1}>Create your artist profile</h1>
+      <p style={styles.sub}>This becomes your public page on Siang. You can add a photo right after.</p>
       <form onSubmit={submit} style={styles.form}>
         <Field label="Name">
           <input
@@ -245,13 +286,14 @@ function CreateProfile() {
           }}
         />
         <p style={{ ...styles.hint, marginTop: -6 }}>Your page and QR codes use this address. English letters, numbers and dashes.</p>
-        <Field label="Discipline">
-          <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} placeholder="e.g. Ceramics" />
-        </Field>
+        <ArtTypeField value={discipline} onChange={setDiscipline} required />
         <PlacePicker value={place} onChange={setPlace} />
-        <Field label="Bio">
-          <textarea style={styles.textarea} value={bio} onChange={(e) => setBio(e.target.value)} rows={4} />
-        </Field>
+        <label style={styles.label}>
+          <span style={{ display: "flex", justifyContent: "space-between" }}>
+            Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
+          </span>
+          <textarea style={styles.textarea} value={bio} maxLength={BIO_LIMIT} onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))} rows={3} />
+        </label>
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.submit} type="submit" disabled={busy}>
           {busy ? (
@@ -267,16 +309,60 @@ function CreateProfile() {
   );
 }
 
+// The artist's main art type (PRD 7.1). Someone who typed their own
+// discipline before the list existed keeps it as an extra choice.
+function ArtTypeField({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
+  const listed = (ART_TYPES as readonly string[]).includes(value);
+  return (
+    <label style={styles.label}>
+      Main art type
+      <select style={styles.select} value={value} required={required} onChange={(e) => onChange(e.target.value)}>
+        <option value="" disabled>
+          Choose…
+        </option>
+        {value && !listed && <option value={value}>{value}</option>}
+        {ART_TYPES.map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function contactValue(contacts: StudioContact[], kind: StudioContact["kind"]) {
   return contacts.find((c) => c.kind === kind)?.value ?? "";
 }
 
+// How a contact reads in the line under the name: the address itself.
+function contactText(c: StudioContact) {
+  if (c.kind === "ig") return "@" + c.value.replace(/^@/, "");
+  if (c.kind === "line") return "LINE " + c.value;
+  return c.value;
+}
 
-type OpenSheet = null | "profile" | "links" | "compose" | "exhibition" | { work: StudioArtwork } | { qr: StudioArtwork };
+type Tab = "art" | "shows" | "collections" | "about";
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "art", label: "Art", icon: ART_CHIP },
+  { id: "shows", label: "Exhibition", icon: SHOWS_CHIP },
+  { id: "collections", label: "Collection", icon: COLLECTION_CHIP },
+  { id: "about", label: "About", icon: ABOUT_CHIP },
+];
 
-// The artist's page exactly as visitors see it in the app (the detail sheet),
-// with edit controls on top: tap the card or avatar to change the photo, the
-// pencil to edit details, the tiles to edit works.
+type OpenSheet =
+  | null
+  | "profile"
+  | "links"
+  | "compose"
+  | { newShow: "exhibition" | "collection" }
+  | { show: StudioExhibition }
+  | { work: StudioArtwork }
+  | { qr: StudioArtwork };
+
+// The artist's profile as visitors see it, with edit controls on top: tap the
+// avatar to change the photo, Edit Profile for the details, a tile to edit a
+// work, a card to edit an exhibition or collection.
 function ArtistPage({
   artist,
   works,
@@ -296,6 +382,7 @@ function ArtistPage({
   const supabase = createClient();
   const cardRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
+  const [tab, setTab] = useState<Tab>("art");
   const [sheet, setSheet] = useState<OpenSheet>(null);
   const [card, setCard] = useState({ card_bg: artist.card_bg, card_ink: artist.card_ink });
   const [avatarUrl, setAvatarUrl] = useState(artist.avatar_url);
@@ -362,6 +449,9 @@ function ArtistPage({
   }
   const listens = rows.reduce((sum, w) => sum + w.listen_count, 0);
   const url = `https://siang.co/${artist.slug}`;
+  const place = [artist.based, artist.country].filter(Boolean).join(", ");
+  const exhibitions = showRows.filter((sh) => sh.venue);
+  const collections = showRows.filter((sh) => !sh.venue);
 
   async function changeCardPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -435,47 +525,56 @@ function ArtistPage({
 
   async function addWork(fields: {
     title: string;
-    coverUrl: string | null;
-    audioUrl: string;
+    coverUrl: string;
+    audioUrl: string | null;
     durationSec: number | null;
     description: string;
     exhibitionId: string | null;
+    details: WorkDetails;
   }) {
     const base = slugify(fields.title);
     const slug = base && base !== "shows" ? base : `work-${Date.now()}`;
-    const { data, error } = await supabase
-      .from("artworks")
-      .insert({
-        artist_id: artist.id,
-        slug,
-        code: makeCode(),
-        title: fields.title,
-        duration_sec: fields.durationSec,
-        description: fields.description || null,
-        cover_url: fields.coverUrl,
-        audio_url: fields.audioUrl,
-        sort_order: rows.length,
-      })
-      .select("id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order")
-      .single();
-    if (error || !data) return { error: error?.message ?? "Could not publish the work." };
+    const row = {
+      artist_id: artist.id,
+      slug,
+      code: makeCode(),
+      title: fields.title,
+      duration_sec: fields.durationSec,
+      description: fields.description || null,
+      cover_url: fields.coverUrl,
+      audio_url: fields.audioUrl,
+      sort_order: rows.length,
+    };
+    let details: Partial<WorkDetails> = withFilled(fields.details, false);
+    let res = await supabase.from("artworks").insert({ ...row, ...details }).select(WORK_COLUMNS).single();
+    if (isMissingColumn(res.error)) {
+      // Publishing must not wait for the database update: the work goes live
+      // without its year, medium and size, which can be added afterwards.
+      details = {};
+      res = await supabase.from("artworks").insert(row).select(WORK_COLUMNS).single();
+    }
+    if (res.error || !res.data) return { error: res.error?.message ?? "Could not publish the work." };
+    const work = { ...(res.data as StudioArtwork), ...details };
 
     if (fields.exhibitionId) {
-      await supabase.from("exhibition_artworks").insert({ exhibition_id: fields.exhibitionId, artwork_id: data.id });
+      await supabase.from("exhibition_artworks").insert({ exhibition_id: fields.exhibitionId, artwork_id: work.id });
       setShowRows((r) =>
-        r.map((sh) => (sh.id === fields.exhibitionId ? { ...sh, exhibition_artworks: [...sh.exhibition_artworks, { artwork_id: data.id }] } : sh))
+        r.map((sh) => (sh.id === fields.exhibitionId ? { ...sh, exhibition_artworks: [...sh.exhibition_artworks, { artwork_id: work.id }] } : sh))
       );
     }
 
-    setRows((r) => [...r, data as StudioArtwork]);
+    setRows((r) => [...r, work]);
     setSheet(null);
     router.refresh();
     return {};
   }
 
-  async function updateWork(id: string, fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url">>) {
+  async function updateWork(
+    id: string,
+    fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url" | "year" | "medium" | "height_cm" | "width_cm" | "depth_cm">>
+  ) {
     const { error } = await supabase.from("artworks").update(fields).eq("id", id);
-    if (error) return error.message;
+    if (error) return isMissingColumn(error) ? NEEDS_MIGRATION : error.message;
     setRows((r) => r.map((w) => (w.id === id ? { ...w, ...fields } : w)));
     router.refresh();
     return null;
@@ -491,36 +590,67 @@ function ArtistPage({
     return null;
   }
 
-  async function createExhibition(title: string, slug: string, venue: string, year: number, kind: "solo" | "group", workIds: string[]) {
-    const { data, error } = await supabase
-      .from("exhibitions")
-      .insert({ artist_id: artist.id, slug, title, venue, year, kind })
-      .select("id, slug, title, kind, year, venue, cover_url")
-      .single();
-    if (error || !data) {
-      const taken = error?.code === "23505";
-      return { error: taken ? "You already have an exhibition with that link. Try another." : error?.message ?? "Could not create the exhibition." };
+  // Creates an exhibition or collection, or saves changes to one (`existing`).
+  async function saveShow(fields: ShowFields, existing: StudioExhibition | null) {
+    const { workIds, title, slug, kind, venue, year, ...extra } = fields;
+    const hadExtra = !!existing && [existing.starts_on, existing.ends_on, existing.city, existing.hours, existing.entry].some((v) => v != null);
+    const row = { title, kind, venue, year, ...withFilled(extra, hadExtra) };
+
+    let id = existing?.id;
+    if (existing) {
+      const { error } = await supabase.from("exhibitions").update(row).eq("id", existing.id);
+      if (error) return { error: isMissingColumn(error) ? NEEDS_MIGRATION : error.message };
+    } else {
+      const { data, error } = await supabase
+        .from("exhibitions")
+        .insert({ artist_id: artist.id, slug, ...row })
+        .select("id")
+        .single<{ id: string }>();
+      if (error || !data) {
+        if (isMissingColumn(error)) return { error: NEEDS_MIGRATION };
+        const taken = error?.code === "23505";
+        return { error: taken ? "You already have one with that link. Try another." : error?.message ?? "Could not create it." };
+      }
+      id = data.id;
     }
 
-    let linkedIds: string[] = [];
-    if (workIds.length) {
-      const { data: linked, error: linkError } = await supabase
-        .from("exhibition_artworks")
-        .insert(workIds.map((artwork_id) => ({ exhibition_id: data.id, artwork_id })))
-        .select("artwork_id");
-      if (linkError) {
-        // the exhibition itself was created; only the work links failed —
-        // still show it, but surface the error so it isn't silently wrong
-        setShowRows((r) => [{ ...data, exhibition_artworks: [] }, ...r]);
-        router.refresh();
-        return { error: `Exhibition created, but couldn't link works: ${linkError.message}` };
-      }
-      linkedIds = (linked ?? []).map((l) => l.artwork_id);
+    // Replace the list of works with the ticked ones.
+    const before = existing?.exhibition_artworks.map((a) => a.artwork_id) ?? [];
+    const removed = before.filter((w) => !workIds.includes(w));
+    const added = workIds.filter((w) => !before.includes(w));
+    let linkError: string | null = null;
+    if (removed.length) {
+      const { error } = await supabase.from("exhibition_artworks").delete().eq("exhibition_id", id).in("artwork_id", removed);
+      if (error) linkError = error.message;
     }
-    setShowRows((r) => [{ ...data, exhibition_artworks: linkedIds.map((id) => ({ artwork_id: id })) }, ...r]);
+    if (added.length) {
+      const { error } = await supabase.from("exhibition_artworks").insert(added.map((artwork_id) => ({ exhibition_id: id, artwork_id })));
+      if (error) linkError = error.message;
+    }
+
+    const saved: StudioExhibition = {
+      id: id!,
+      slug: existing?.slug ?? slug,
+      cover_url: existing?.cover_url ?? null,
+      ...(existing ? { starts_on: existing.starts_on, ends_on: existing.ends_on, city: existing.city, hours: existing.hours, entry: existing.entry } : {}),
+      ...row,
+      exhibition_artworks: linkError ? before.map((artwork_id) => ({ artwork_id })) : workIds.map((artwork_id) => ({ artwork_id })),
+    };
+    setShowRows((r) => (existing ? r.map((sh) => (sh.id === saved.id ? saved : sh)) : [saved, ...r]));
+    router.refresh();
+    // The row itself was saved; only the list of works failed — say so rather than leave it silently wrong.
+    if (linkError) return { error: `Saved, but the works couldn't be updated: ${linkError}` };
+    setSheet(null);
+    return {};
+  }
+
+  async function deleteShow(id: string) {
+    const { error } = await supabase.from("exhibitions").delete().eq("id", id);
+    if (error) return error.message;
+    setShowRows((r) => r.filter((sh) => sh.id !== id));
     setSheet(null);
     router.refresh();
-    return {};
+    return null;
   }
 
   async function updateShowCover(id: string, cover_url: string) {
@@ -528,44 +658,209 @@ function ArtistPage({
     await supabase.from("exhibitions").update({ cover_url }).eq("id", id);
   }
 
-  const tile = (w: StudioArtwork, meta: React.ReactNode) => (
-    <button key={w.id} className={ds.tile} onClick={() => setSheet({ work: w })} type="button" aria-label={`Edit ${w.title}`}>
-      <span
-        className={`${ds.piece} ${w.cover_url ? "" : st.placeholderPiece}`}
-        style={w.cover_url ? { background: `center/cover no-repeat url("${w.cover_url}")` } : undefined}
-      />
-      <span className={ds.cap}>{w.title}</span>
-      {meta}
-    </button>
-  );
+  const workShare = (w: StudioArtwork): ShareInfo => ({
+    title: w.title,
+    subtitle: artist.name,
+    meta: [w.year, w.medium].filter(Boolean).join(" · "),
+    url: `${url}/${w.slug}`,
+    qrUrl: `https://siang.co/w/${w.code}`,
+    code: w.code,
+    hint: "Scan to listen",
+    file: `siang-${w.code}`,
+  });
+
+  // One exhibition or collection as a card: tap to edit, the camera to change its cover.
+  const showCard = (sh: StudioExhibition) => {
+    const showWorks = rows.filter((w) => sh.exhibition_artworks.some((a) => a.artwork_id === w.id));
+    const cover = sh.cover_url ?? showWorks.find((w) => w.cover_url)?.cover_url ?? null;
+    const when = showWhenText({ startsOn: sh.starts_on ?? null, endsOn: sh.ends_on ?? null, year: sh.year });
+    return (
+      <div key={sh.id} className={`${app.show} ${app.shade}`}>
+        <span className={app.cardImg} style={{ background: cover ? `center/cover no-repeat url("${cover}")` : "var(--surface-hi)" }} />
+        <span className={app.showMeta}>
+          {sh.venue && (
+            <span>
+              {PIN_SM}
+              {sh.city || sh.venue}
+            </span>
+          )}
+          {when && (
+            <span>
+              {CALENDAR_SM}
+              {when}
+            </span>
+          )}
+          <span>
+            {showWorks.length} work{showWorks.length === 1 ? "" : "s"}
+          </span>
+        </span>
+        <h2 className={app.showTitle}>{sh.title}</h2>
+        <button className={app.cover} onClick={() => setSheet({ show: sh })} aria-label={`Edit ${sh.title}`} type="button" />
+        <ShowCoverButton show={sh} onChange={updateShowCover} />
+      </div>
+    );
+  };
 
   return (
-    <main className={st.page}>
-      <div className={st.column}>
-        <div className={ds.detailTop}>
-          <div className={st.topLeft}>
-            <Link href={BETA_PATH} className={ds.close} aria-label="Back to Pocket">
-              {BACK_CHEVRON_SVG}
-            </Link>
-            <span className={ds.k}>{copied ? "Link copied" : "Your page"}</span>
-          </div>
-          <div className={ds.dtActs}>
-            <button className={ds.close} onClick={share} aria-label="Share your page" type="button">
-              {SHARE_GLYPH}
-            </button>
-            <button className={ds.close} onClick={() => setSheet("profile")} aria-label="Edit your details" type="button">
-              {EDIT_ICON}
-            </button>
-            <button className={ds.close} onClick={onSignOut} aria-label="Sign out" type="button">
-              {SIGN_OUT_ICON}
-            </button>
-          </div>
+    <main className={app.app}>
+      <div className={st.bar}>
+        <Link href="/" className={app.iconBtn} aria-label="Back to Siang">
+          {BACK_CHEVRON_SVG}
+        </Link>
+        <span className={st.barTitle}>{copied ? "Link copied" : "Your studio"}</span>
+        <div className={app.topActs}>
+          <button className={app.iconBtn} onClick={share} aria-label="Share your page" type="button">
+            {SHARE_GLYPH}
+          </button>
+          <button className={app.iconBtn} onClick={onSignOut} aria-label="Sign out" type="button">
+            {SIGN_OUT_ICON}
+          </button>
         </div>
+      </div>
 
-        <div className={st.body}>
+      <header className={pf.head}>
+        <button
+          className={`${app.avatar} ${st.avatarBtn}`}
+          style={avatarUrl ? { backgroundImage: `url("${avatarUrl}")` } : undefined}
+          onClick={() => avatarRef.current?.click()}
+          disabled={uploading === "avatar"}
+          aria-label="Change your photo"
+          type="button"
+        >
+          {uploading === "avatar" ? <Spinner size={20} label="Uploading photo" /> : !avatarUrl && CAMERA_ICON}
+          <span className={st.avatarBadge}>{EDIT_ICON}</span>
+        </button>
+        <input ref={avatarRef} type="file" accept="image/*" hidden onChange={changeAvatar} />
+        <div className={pf.who}>
+          <h1 className={pf.name}>{artist.name}</h1>
+          <p className={pf.handle}>@{artist.slug}</p>
+        </div>
+        <div className={pf.headActs}>
+          <button className={pf.edit} onClick={() => setSheet("profile")} type="button">
+            Edit Profile
+          </button>
+        </div>
+      </header>
+      {error && <p className={st.error}>{error}</p>}
+
+      <p className={pf.contacts}>
+        {contacts.map((c) => (
+          <span key={c.kind}>{contactText(c)}</span>
+        ))}
+        {contacts.length === 0 && (
+          <button className={st.addHint} onClick={() => setSheet("profile")} type="button">
+            + Add a way to contact you
+          </button>
+        )}
+      </p>
+      {place ? (
+        <p className={pf.place}>
+          {PIN_SM}
+          {place}
+        </p>
+      ) : (
+        <button className={`${pf.place} ${st.addHint}`} onClick={() => setSheet("profile")} type="button">
+          + Add where you&apos;re based
+        </button>
+      )}
+
+      <div className={app.chips} role="tablist" aria-label="Your page">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`${app.chip} ${tab === t.id ? app.chipOn : ""}`}
+            onClick={() => setTab(t.id)}
+            type="button"
+          >
+            {t.icon} {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "art" && (
+        <div className={pf.mosaic} role="tabpanel">
+          <button className={`${pf.tile} ${st.addTile}`} onClick={() => setSheet("compose")} type="button">
+            {ADD_ICON}
+            <span>Upload a work</span>
+          </button>
+          {rows.map((w) => (
+            <button key={w.id} className={pf.tile} onClick={() => setSheet({ work: w })} type="button" aria-label={`Edit ${w.title}`}>
+              <span className={pf.tileImg} style={{ background: w.cover_url ? `center/cover no-repeat url("${w.cover_url}")` : "var(--surface-hi)" }} />
+              <span className={pf.tileText}>
+                <span className={pf.tileTitle}>{w.title}</span>
+                <span className={pf.tileDate}>{dayMonthYear(w.created_at)}</span>
+              </span>
+              <span className={pf.tileFoot}>
+                {w.duration_sec ? clock(w.duration_sec) : "No sound"} · {w.listen_count.toLocaleString()} listens
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "shows" && (
+        <div className={`${pf.panel} ${pf.stack}`} role="tabpanel">
+          {exhibitions.map(showCard)}
+          {exhibitions.length === 0 && <p className={pf.none}>Add an exhibition with its place and dates, so people know where to go and until when.</p>}
+          <button className={app.btnGhost} onClick={() => setSheet({ newShow: "exhibition" })} type="button">
+            {ADD_ICON} New exhibition
+          </button>
+        </div>
+      )}
+
+      {tab === "collections" && (
+        <div className={`${pf.panel} ${pf.stack}`} role="tabpanel">
+          {collections.map(showCard)}
+          {collections.length === 0 && <p className={pf.none}>Pull your own works together into a collection: a series, a period, a selection.</p>}
+          <button className={app.btnGhost} onClick={() => setSheet({ newShow: "collection" })} type="button">
+            {ADD_ICON} New collection
+          </button>
+        </div>
+      )}
+
+      {tab === "about" && (
+        <div className={pf.panel} role="tabpanel">
+          {artist.bio ? (
+            <p className={pf.bio}>{artist.bio}</p>
+          ) : (
+            <button className={st.addHint} onClick={() => setSheet("profile")} type="button">
+              + Add a short bio
+            </button>
+          )}
+          <dl className={pf.facts}>
+            <div className={pf.fact}>
+              <dt>Art type</dt>
+              <dd>{artist.discipline || "Not set"}</dd>
+            </div>
+            <div className={pf.fact}>
+              <dt>On Siang since</dt>
+              <dd>{monthYear(artist.joined_at, artist.joined_tz)}</dd>
+            </div>
+            <div className={pf.fact}>
+              <dt>Listens, seen only by you</dt>
+              <dd>{listens.toLocaleString()}</dd>
+            </div>
+          </dl>
+
+          <div className={pf.links}>
+            {linkRows.map((l) => (
+              <a key={l.id} className={pf.linkBtn} href={l.url} target="_blank" rel="noopener noreferrer">
+                {LINK_ICON}
+                {l.label}
+              </a>
+            ))}
+            <button className={`${pf.linkBtn} ${st.dashed}`} onClick={() => setSheet("links")} type="button">
+              {ADD_ICON}
+              {linkRows.length ? "Edit links" : "Add links"}
+            </button>
+          </div>
+
+          <h2 className={st.sectionTitle}>Your card</h2>
           <button
             ref={heroRef}
-            className={`${ds.hero} ${st.heroBtn} ${adjust ? st.adjusting : ""}`}
+            className={`${st.hero} ${adjust ? st.adjusting : ""}`}
             onClick={() => !adjust && cardRef.current?.click()}
             onPointerDown={(e) => {
               if (!adjust) return;
@@ -579,25 +874,23 @@ function ArtistPage({
             aria-label={adjust ? "Drag to move the photo" : hasCardPhoto ? "Change your card photo" : "Add a photo to your card"}
             type="button"
           >
-            <span className={ds.side}>
-              <CardFace
-                card={{
-                  cardBg: shownCardBg,
-                  cardInk: card.card_ink,
-                  based: artist.based ?? "",
-                  country: artist.country ?? "",
-                  addedAt: artist.joined_at ?? new Date().toISOString(),
-                  joinedTz: artist.joined_tz,
-                  name: artist.name,
-                  slug: artist.slug,
-                }}
-              />
-              {uploading === "card" && (
-                <span className={st.veil}>
-                  <Spinner size={28} label="Uploading card photo" />
-                </span>
-              )}
-            </span>
+            <CardFace
+              card={{
+                cardBg: shownCardBg,
+                cardInk: card.card_ink,
+                based: artist.based ?? "",
+                country: artist.country ?? "",
+                addedAt: artist.joined_at ?? new Date().toISOString(),
+                joinedTz: artist.joined_tz,
+                name: artist.name,
+                slug: artist.slug,
+              }}
+            />
+            {uploading === "card" && (
+              <span className={st.veil}>
+                <Spinner size={28} label="Uploading card photo" />
+              </span>
+            )}
             <span className={st.cardEdit}>
               {adjust ? (
                 <>
@@ -621,161 +914,29 @@ function ArtistPage({
               </button>
             </div>
           ) : (
-            <p className={ds.fliphint}>
-              Tap the card to change its photo
+            <p className={st.cardHint}>
+              The card you hand out when you meet someone. Its colours also stand in for a work that has no picture.
               {hasCardPhoto && (
                 <>
-                  {" · "}
-                  <button onClick={() => startAdjust()} style={{ textDecoration: "underline", fontSize: "inherit", color: "inherit" }} type="button">
-                    Move
+                  {" "}
+                  <button onClick={() => startAdjust()} className={st.textBtn} type="button">
+                    Move photo
                   </button>
                   {" · "}
-                  <button onClick={removeCardPhoto} style={{ textDecoration: "underline", fontSize: "inherit", color: "inherit" }} type="button">
-                    Remove
+                  <button onClick={removeCardPhoto} className={st.textBtn} type="button">
+                    Remove photo
                   </button>
                 </>
               )}
             </p>
           )}
-
-          <div className={ds.dwho}>
-            <button
-              className={`${ds.avatar} ${st.avatarBtn}`}
-              style={avatarUrl ? { backgroundImage: `url("${avatarUrl}")` } : undefined}
-              onClick={() => avatarRef.current?.click()}
-              disabled={uploading === "avatar"}
-              aria-label="Change your photo"
-              type="button"
-            >
-              {uploading === "avatar" ? <Spinner size={20} label="Uploading photo" /> : !avatarUrl && CAMERA_ICON}
-              <span className={st.avatarBadge}>{EDIT_ICON}</span>
-            </button>
-            <input ref={avatarRef} type="file" accept="image/*" hidden onChange={changeAvatar} />
-            <div>
-              <h1 className={ds.dname}>{artist.name}</h1>
-              <div className={ds.dkind}>siang.co/{artist.slug}</div>
-            </div>
-          </div>
-          {error && <p style={{ ...styles.error, color: "#B63878" }}>{error}</p>}
-
-          {artist.bio ? (
-            <p className={ds.dbio}>{artist.bio}</p>
-          ) : (
-            <button className={st.addHint} onClick={() => setSheet("profile")} type="button">
-              + Add a short bio
-            </button>
-          )}
-
-          <div className={ds.dcontacts}>
-            {contacts.map((c) => (
-              <a key={c.kind} className={ds.mappill} href={contactHref(c.kind, c.value)} target="_blank" rel="noopener noreferrer">
-                {contactIcon(c.kind)}
-                <span>{contactLabel(c.kind)}</span>
-              </a>
-            ))}
-            {linkRows.map((l) => (
-              <a key={l.id} className={ds.mappill} href={l.url} target="_blank" rel="noopener noreferrer">
-                {LINK_ICON}
-                <span>{l.label}</span>
-              </a>
-            ))}
-            <button className={`${ds.mappill} ${st.dashed}`} onClick={() => setSheet("links")} type="button">
-              {ADD_ICON}
-              <span>{linkRows.length ? "Edit links" : "Add links"}</span>
-            </button>
-          </div>
-
-          <div className={ds.dmeta}>
-            <div className={ds.dmetaRow}>
-              <b>{listens.toLocaleString()} listens</b>
-              {artist.based && (
-                <span className={ds.mappill}>
-                  {PIN}
-                  <span>{artist.based}</span>
-                </span>
-              )}
-            </div>
-            <span>
-              {[artist.based, artist.country].filter(Boolean).join(", ") || "Add where you're based"} · on Siang since {monthYear(artist.joined_at, artist.joined_tz)}
-            </span>
-          </div>
-
-          <div className={ds.dpanel}>
-            <section className={ds.dsec}>
-              <div className={ds.dsecHead}>
-                <h2>Art</h2>
-                <span>
-                  {rows.length} work{rows.length === 1 ? "" : "s"}
-                </span>
-              </div>
-              <div className={ds.shelf}>
-                <button className={ds.tile} onClick={() => setSheet("compose")} type="button">
-                  <span className={`${ds.piece} ${st.addPiece}`}>
-                    {ADD_ICON}
-                    <span>Upload a work</span>
-                  </span>
-                  <span className={ds.cap}>New work</span>
-                </button>
-                {rows.map((w) =>
-                  tile(
-                    w,
-                    <span className={ds.loc}>
-                      <span>
-                        {w.duration_sec ? clock(w.duration_sec) : "—"} · {w.listen_count.toLocaleString()} listens
-                      </span>
-                    </span>
-                  )
-                )}
-              </div>
-            </section>
-
-            <section className={ds.dsec}>
-              <div className={ds.dsecHead}>
-                <h2>Exhibitions</h2>
-                <span>
-                  {showRows.length} show{showRows.length === 1 ? "" : "s"}
-                </span>
-              </div>
-              {showRows.map((sh) => {
-                const showWorks = rows.filter((w) => sh.exhibition_artworks.some((a) => a.artwork_id === w.id));
-                return (
-                  <div className={ds.show} key={sh.id}>
-                    <div className={ds.showHead}>
-                      <ShowCoverButton show={sh} onChange={updateShowCover} />
-                      <span className={ds.t}>
-                        <em>
-                          <a href={`/${artist.slug}/shows/${sh.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }}>
-                            {sh.title}
-                          </a>
-                        </em>
-                        <span className={ds.loc}>
-                          {PIN}
-                          <span>
-                            {sh.venue ?? "No venue"} · {sh.year ?? "—"} · {sh.kind === "solo" ? "Solo" : "Group"}
-                          </span>
-                        </span>
-                      </span>
-                      <span className={ds.more}>
-                        {showWorks.length} work{showWorks.length === 1 ? "" : "s"}
-                      </span>
-                    </div>
-                    {showWorks.length > 0 && <div className={ds.shelf}>{showWorks.slice(0, 3).map((w) => tile(w, null))}</div>}
-                  </div>
-                );
-              })}
-              {showRows.length === 0 && <p className={st.empty}>Group works into a show so visitors can find where they hung.</p>}
-              <button className={st.darkAdd} onClick={() => setSheet("exhibition")} type="button">
-                {ADD_ICON} New exhibition
-              </button>
-            </section>
-          </div>
         </div>
-      </div>
+      )}
 
       <div className={st.doneBar}>
         <span className={st.doneNote}>✓ Changes save as you go</span>
         <Link href={`/${artist.slug}`} className={st.doneBtn}>
-          Done
+          View your page
         </Link>
       </div>
 
@@ -790,9 +951,21 @@ function ArtistPage({
         </Sheet>
       )}
       {sheet === "compose" && <WorkComposer artistSlug={artist.slug} shows={showRows} onClose={() => setSheet(null)} onSubmit={addWork} />}
-      {sheet === "exhibition" && (
-        <Sheet title="New exhibition" onClose={() => setSheet(null)}>
-          <NewExhibitionForm works={rows} onSubmit={createExhibition} />
+      {sheet && typeof sheet === "object" && "newShow" in sheet && (
+        <Sheet title={sheet.newShow === "exhibition" ? "New exhibition" : "New collection"} onClose={() => setSheet(null)}>
+          <ShowForm mode={sheet.newShow} works={rows} existing={null} onSubmit={(fields) => saveShow(fields, null)} />
+        </Sheet>
+      )}
+      {sheet && typeof sheet === "object" && "show" in sheet && (
+        <Sheet title={sheet.show.venue ? "Edit exhibition" : "Edit collection"} onClose={() => setSheet(null)}>
+          <ShowForm
+            mode={sheet.show.venue ? "exhibition" : "collection"}
+            works={rows}
+            existing={sheet.show}
+            onSubmit={(fields) => saveShow(fields, sheet.show)}
+            onDelete={() => deleteShow(sheet.show.id)}
+            pageHref={`/${artist.slug}/shows/${sheet.show.slug}`}
+          />
         </Sheet>
       )}
       {sheet && typeof sheet === "object" && "work" in sheet && (
@@ -804,9 +977,7 @@ function ArtistPage({
           onShowQR={() => setSheet({ qr: sheet.work })}
         />
       )}
-      {sheet && typeof sheet === "object" && "qr" in sheet && (
-        <WorkQRSheet artistSlug={artist.slug} work={sheet.qr} onClose={() => setSheet(null)} />
-      )}
+      {sheet && typeof sheet === "object" && "qr" in sheet && <ShareSheet info={workShare(sheet.qr)} onClose={() => setSheet(null)} />}
     </main>
   );
 }
@@ -828,12 +999,8 @@ function ShowCoverButton({ show, onChange }: { show: StudioExhibition; onChange:
   }
 
   return (
-    <label
-      className={st.showCover}
-      style={show.cover_url ? { backgroundImage: `url("${show.cover_url}")` } : undefined}
-      aria-label="Change exhibition cover photo"
-    >
-      {uploading ? <Spinner size={16} label="Uploading cover" /> : !show.cover_url && CAMERA_ICON}
+    <label className={st.showCover} aria-label="Change the cover photo">
+      {uploading ? <Spinner size={16} label="Uploading cover" /> : CAMERA_ICON}
       <input type="file" accept="image/*" hidden onChange={handleCover} />
     </label>
   );
@@ -925,14 +1092,12 @@ function EditProfileForm({
         <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <SlugField value={slug} onChange={setSlug} />
-      <p style={{ ...styles.hint, marginTop: -6, color: slugChanged ? "#FF6FA5" : undefined }}>
+      <p style={{ ...styles.hint, marginTop: -6, color: slugChanged ? "#ff8a8a" : undefined }}>
         {slugChanged
           ? `QR codes and links you already shared point to siang.co/${artist.slug} and will stop working.`
           : "Changing your name doesn't change your link."}
       </p>
-      <Field label="Discipline">
-        <input style={styles.input} value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
-      </Field>
+      <ArtTypeField value={discipline} onChange={setDiscipline} />
       <PlacePicker value={place} onChange={setPlace} />
       <label style={styles.label}>
         <span style={{ display: "flex", justifyContent: "space-between" }}>
@@ -1152,16 +1317,18 @@ function WorkComposer({
   onClose: () => void;
   onSubmit: (fields: {
     title: string;
-    coverUrl: string | null;
-    audioUrl: string;
+    coverUrl: string;
+    audioUrl: string | null;
     durationSec: number | null;
     description: string;
     exhibitionId: string | null;
+    details: WorkDetails;
   }) => Promise<{ error?: string }>;
 }) {
   const supabase = createClient();
   const coverRef = useRef<HTMLInputElement>(null);
   const soundRef = useRef<HTMLInputElement>(null);
+  const [details, setDetails] = useState<DetailInputs>({ ...EMPTY_DETAILS, year: String(new Date().getFullYear()) });
 
   const [title, setTitle] = useState("");
   const [titleEn, setTitleEn] = useState("");
@@ -1213,12 +1380,21 @@ function WorkComposer({
       setError("Add a title to publish this work.");
       return;
     }
-    if (!audioUrl) {
-      setError("Add a sound file — every work needs one.");
+    if (!coverUrl) {
+      setError("Add a cover image. It is how people find the work.");
+      return;
+    }
+    if (!audioUrl && !description.trim()) {
+      setError("Add a sound, or write something about the work.");
+      return;
+    }
+    const parsed = parseDetails(details);
+    if (typeof parsed === "string") {
+      setError(parsed);
       return;
     }
     setBusy(true);
-    const result = await onSubmit({ title: t, coverUrl, audioUrl, durationSec, description, exhibitionId });
+    const result = await onSubmit({ title: t, coverUrl, audioUrl, durationSec, description: description.trim(), exhibitionId, details: parsed });
     setBusy(false);
     if (result.error) setError(result.error);
   }
@@ -1260,7 +1436,7 @@ function WorkComposer({
                   <>
                     + Add cover
                     <br />
-                    <span style={{ opacity: 0.7, fontSize: 11 }}>optional</span>
+                    <span style={{ opacity: 0.7, fontSize: 11 }}>required</span>
                   </>
                 ))}
             </button>
@@ -1278,13 +1454,19 @@ function WorkComposer({
           </div>
 
           <div style={styles.composerSecHead}>
+            <h2 style={styles.h2}>Details</h2>
+            <span style={styles.composerSecLabel}>Shown under the work</span>
+          </div>
+          <DetailFields value={details} onChange={setDetails} />
+
+          <div style={styles.composerSecHead}>
             <h2 style={styles.h2}>Content</h2>
-            <span style={styles.composerSecLabel}>Shown in this order</span>
+            <span style={styles.composerSecLabel}>A sound, a text, or both</span>
           </div>
 
           <div style={styles.soundHead}>
             <span style={styles.soundHeadLabel}>
-              {MUSIC_ICON} Sound <span style={styles.soundHeadSub}>One per work, required</span>
+              {MUSIC_ICON} Sound <span style={styles.soundHeadSub}>One per work: your voice, or the sound of the work</span>
             </span>
           </div>
 
@@ -1336,7 +1518,7 @@ function WorkComposer({
           {shows.length > 0 && (
             <>
               <div style={styles.composerSecHead}>
-                <h2 style={styles.h2}>Exhibition</h2>
+                <h2 style={styles.h2}>Exhibition or collection</h2>
                 <span style={styles.composerSecLabel}>Optional</span>
               </div>
               <div style={styles.chipRow}>
@@ -1345,7 +1527,7 @@ function WorkComposer({
                   style={exhibitionId === null ? styles.chipActive : styles.chipInactive}
                   onClick={() => setExhibitionId(null)}
                 >
-                  Not in an exhibition
+                  None
                 </button>
                 {shows.map((sh) => (
                   <button
@@ -1375,56 +1557,10 @@ function WorkComposer({
               "Publish"
             )}
           </button>
-          <p style={styles.composerHint}>Publishing gives the work its page, a six-digit code and a QR to print.</p>
+          <p style={styles.composerHint}>Publishing gives the work its page, a six-digit code and a label to print.</p>
         </div>
       </div>
     </>
-  );
-}
-
-function formatCode(code: string) {
-  return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
-}
-
-function WorkQRSheet({ artistSlug, work, onClose }: { artistSlug: string; work: StudioArtwork; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const url = `https://siang.co/${artistSlug}/${work.slug}`;
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // clipboard API unavailable — nothing to fall back to here
-    }
-  }
-
-  function downloadQR() {
-    const canvas = document.getElementById(`work-qr-${work.id}`) as HTMLCanvasElement | null;
-    if (!canvas) return;
-    const a = document.createElement("a");
-    a.download = `${work.slug}-qr.png`;
-    a.href = canvas.toDataURL("image/png");
-    a.click();
-  }
-
-  return (
-    <Sheet title={work.title} onClose={onClose}>
-      <p style={{ ...styles.sub, marginTop: -8, marginBottom: 16 }}>Scan to hear this work</p>
-      <div style={styles.qrWrap}>
-        <QRCodeCanvas id={`work-qr-${work.id}`} value={url} size={200} includeMargin />
-      </div>
-      <p style={styles.qrCodeText}>{formatCode(work.code)}</p>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button style={{ ...styles.saveSm, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={copyLink} type="button">
-          {LINK_ICON} {copied ? "Copied" : "Copy link"}
-        </button>
-        <button style={{ ...styles.rowBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={downloadQR} type="button">
-          {DOWNLOAD_ICON} Download QR
-        </button>
-      </div>
-    </Sheet>
   );
 }
 
@@ -1439,10 +1575,21 @@ function WorkSheet({
 }: {
   work: StudioArtwork;
   onClose: () => void;
-  onUpdate: (id: string, fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url">>) => Promise<string | null>;
+  onUpdate: (
+    id: string,
+    fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url" | "year" | "medium" | "height_cm" | "width_cm" | "depth_cm">>
+  ) => Promise<string | null>;
   onDelete: (id: string) => Promise<string | null>;
   onShowQR: () => void;
 }) {
+  const before: DetailInputs = {
+    year: work.year ? String(work.year) : "",
+    medium: work.medium ?? "",
+    height: work.height_cm ? String(work.height_cm) : "",
+    width: work.width_cm ? String(work.width_cm) : "",
+    depth: work.depth_cm ? String(work.depth_cm) : "",
+  };
+  const [details, setDetails] = useState(before);
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [coverUrl, setCoverUrl] = useState(work.cover_url);
@@ -1483,8 +1630,21 @@ function WorkSheet({
       setError("Write the length as minutes:seconds, like 3:12.");
       return;
     }
+    const parsed = parseDetails(details, false);
+    if (typeof parsed === "string") {
+      setError(parsed);
+      return;
+    }
+    // Only send the details when they changed, so an untouched work still
+    // saves on a database that doesn't have those columns yet.
+    const detailsChanged = Object.keys(before).some((k) => before[k as keyof DetailInputs] !== details[k as keyof DetailInputs]);
     setBusy(true);
-    const err = await onUpdate(work.id, { title: t, description: description.trim() || null, duration_sec: duration ? secs(duration.trim()) : null });
+    const err = await onUpdate(work.id, {
+      title: t,
+      description: description.trim() || null,
+      duration_sec: duration ? secs(duration.trim()) : null,
+      ...(detailsChanged ? parsed : {}),
+    });
     setBusy(false);
     if (err) setError(err);
     else onClose();
@@ -1524,11 +1684,12 @@ function WorkSheet({
             </Field>
           </div>
         </div>
+        <DetailFields value={details} onChange={setDetails} />
         <Field label="About this work">
-          <textarea style={styles.textarea} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+          <textarea style={styles.textarea} rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
         <p style={styles.hint}>
-          Code {formatCode(work.code)} · {work.listen_count.toLocaleString()} listens
+          Work code {work.code.slice(0, 3)} {work.code.slice(3)} · {work.listen_count.toLocaleString()} listens
         </p>
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.submit} onClick={save} disabled={busy || uploading} type="button">
@@ -1542,7 +1703,7 @@ function WorkSheet({
         </button>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button style={{ ...styles.rowBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onShowQR} type="button">
-            {QR_GLYPH} QR code to print
+            {QR_GLYPH} Label and QR to print
           </button>
           <button style={{ ...styles.rowBtnDanger, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={remove} disabled={busy} type="button">
             {DELETE_ICON} {confirmDelete ? "Tap again to delete" : "Delete work"}
@@ -1553,35 +1714,91 @@ function WorkSheet({
   );
 }
 
-function NewExhibitionForm({
+type DetailInputs = { year: string; medium: string; height: string; width: string; depth: string };
+const EMPTY_DETAILS: DetailInputs = { year: "", medium: "", height: "", width: "", depth: "" };
+
+// Turns what was typed into a work's details, or says what is wrong with it.
+// A new work needs its year and medium (PRD 7.2); size is asked for but not
+// forced, because some works (a sound piece, a room) have none to give.
+function parseDetails(d: DetailInputs, required = true): WorkDetails | string {
+  const year = d.year.trim() ? Number(d.year) : null;
+  if (year != null && !(Number.isInteger(year) && year >= 1000 && year <= 2100)) return "Write the year as four digits, like 2025.";
+  if (required && !year) return "Add the year the work was made.";
+  const medium = d.medium.trim() || null;
+  if (required && !medium) return "Add the medium, like Oil on canvas.";
+  const cm = (v: string) => (v.trim() ? Number(v.replace(",", ".")) : null);
+  const [height_cm, width_cm, depth_cm] = [cm(d.height), cm(d.width), cm(d.depth)];
+  if ([height_cm, width_cm, depth_cm].some((n) => n != null && !(n > 0))) return "Write sizes in centimetres, as numbers.";
+  if ((height_cm == null) !== (width_cm == null)) return "Give both the height and the width, or leave both empty.";
+  return { year, medium, height_cm, width_cm, depth_cm };
+}
+
+function DetailFields({ value, onChange }: { value: DetailInputs; onChange: (v: DetailInputs) => void }) {
+  const set = (key: keyof DetailInputs) => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...value, [key]: e.target.value });
+  return (
+    <>
+      <div style={styles.linkFields}>
+        <Field label="Year">
+          <input style={styles.input} inputMode="numeric" maxLength={4} value={value.year} onChange={set("year")} />
+        </Field>
+        <Field label="Medium">
+          <input style={styles.input} maxLength={120} placeholder="Oil on canvas" value={value.medium} onChange={set("medium")} />
+        </Field>
+      </div>
+      <div style={styles.row3}>
+        <Field label="Height, cm">
+          <input style={styles.input} inputMode="decimal" value={value.height} onChange={set("height")} />
+        </Field>
+        <Field label="Width, cm">
+          <input style={styles.input} inputMode="decimal" value={value.width} onChange={set("width")} />
+        </Field>
+        <Field label="Depth, cm">
+          <input style={styles.input} inputMode="decimal" placeholder="optional" value={value.depth} onChange={set("depth")} />
+        </Field>
+      </div>
+      <p style={styles.hint}>Height and width draw the work next to a person, so people see its real size.</p>
+    </>
+  );
+}
+
+// Makes or edits an exhibition (a place and dates) or a collection (the
+// artist's own works pulled together, with no place).
+function ShowForm({
+  mode,
   works,
+  existing,
   onSubmit,
+  onDelete,
+  pageHref,
 }: {
+  mode: "exhibition" | "collection";
   works: StudioArtwork[];
-  onSubmit: (
-    title: string,
-    slug: string,
-    venue: string,
-    year: number,
-    kind: "solo" | "group",
-    workIds: string[]
-  ) => Promise<{ error?: string }>;
+  existing: StudioExhibition | null;
+  onSubmit: (fields: ShowFields) => Promise<{ error?: string }>;
+  onDelete?: () => Promise<string | null>;
+  pageHref?: string;
 }) {
-  const [title, setTitle] = useState("");
+  const isExhibition = mode === "exhibition";
+  const [title, setTitle] = useState(existing?.title ?? "");
   // Follows the title's English part until edited; a Thai-only title needs one typed.
-  const [slug, setSlug] = useState("");
+  const [slug, setSlug] = useState(existing?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(false);
-  const [venue, setVenue] = useState("");
-  const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [kind, setKind] = useState<"solo" | "group">("solo");
-  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [venue, setVenue] = useState(existing?.venue ?? "");
+  const [city, setCity] = useState(existing?.city ?? "");
+  const [startsOn, setStartsOn] = useState(existing?.starts_on ?? "");
+  const [endsOn, setEndsOn] = useState(existing?.ends_on ?? "");
+  const [hours, setHours] = useState(existing?.hours ?? "");
+  const [entry, setEntry] = useState(existing?.entry ?? "");
+  const [kind, setKind] = useState<"solo" | "group">(existing?.kind ?? "solo");
+  const [checked, setChecked] = useState<Set<string>>(new Set(existing?.exhibition_artworks.map((a) => a.artwork_id)));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   function toggle(id: string) {
     setChecked((s) => {
       const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (!next.delete(id)) next.add(id);
       return next;
     });
   }
@@ -1592,79 +1809,142 @@ function NewExhibitionForm({
     const t = title.trim();
     const v = venue.trim();
     if (!t) {
-      setError("Add a title to create the exhibition.");
+      setError("Add a title.");
       return;
     }
-    if (!v) {
+    if (isExhibition && !v) {
       setError("Add where it is shown, so visitors can find it.");
       return;
     }
-    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 60) {
-      setError("Give the exhibition a link in English letters, numbers and dashes, like still-water.");
+    if (!existing && (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 60)) {
+      setError("Give it a link in English letters, numbers and dashes, like still-water.");
       return;
     }
-    const y = +year;
+    if (startsOn && endsOn && endsOn < startsOn) {
+      setError("The last day is before the first day.");
+      return;
+    }
+    // The year comes from the dates; without dates an edited show keeps the one it had.
+    const year = +(startsOn || endsOn).slice(0, 4) || existing?.year || new Date().getFullYear();
     setBusy(true);
-    const result = await onSubmit(t, slug, v, y > 1900 ? y : new Date().getFullYear(), kind, [...checked]);
+    const result = await onSubmit({
+      title: t,
+      slug,
+      kind,
+      venue: isExhibition ? v : null,
+      year: isExhibition ? year : existing?.year ?? null,
+      city: isExhibition ? city.trim() || null : null,
+      starts_on: isExhibition ? startsOn || null : null,
+      ends_on: isExhibition ? endsOn || null : null,
+      hours: isExhibition ? hours.trim() || null : null,
+      entry: isExhibition ? entry.trim() || null : null,
+      workIds: [...checked],
+    });
     setBusy(false);
     if (result.error) setError(result.error);
   }
 
+  async function remove() {
+    if (!onDelete) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setBusy(true);
+    const err = await onDelete();
+    setBusy(false);
+    if (err) setError(err);
+  }
+
   return (
-    <form style={{ ...styles.form, marginBottom: 18 }} onSubmit={submit}>
+    <form style={{ ...styles.form, marginTop: 0, marginBottom: 18 }} onSubmit={submit}>
       <Field label="Title">
         <input
           style={styles.input}
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
-            if (!slugTouched) setSlug(slugify(e.target.value).slice(0, 60));
+            if (!existing && !slugTouched) setSlug(slugify(e.target.value).slice(0, 60));
           }}
-          placeholder="ชื่อนิทรรศการ"
+          placeholder={isExhibition ? "ชื่อนิทรรศการ" : "ชื่อคอลเลกชัน"}
         />
       </Field>
-      <label style={styles.label}>
-        Link
-        <span style={styles.slugWrap}>
-          <span style={styles.slugPrefix}>…/shows/</span>
-          <input
-            style={styles.slugInput}
-            value={slug}
-            maxLength={60}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="still-water"
-            onChange={(e) => {
-              setSlugTouched(true);
-              setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
-            }}
-          />
-        </span>
-      </label>
-      <Field label="Where it's shown">
-        <input style={styles.input} value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Gallery or venue, city" />
-      </Field>
-      <div style={styles.row}>
-        <Field label="Year">
-          <input style={styles.input} inputMode="numeric" maxLength={4} value={year} onChange={(e) => setYear(e.target.value)} />
-        </Field>
-        <div>
-          <span style={{ ...styles.label, display: "block", marginBottom: 6 }}>Type</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" style={kind === "solo" ? styles.chipActive : styles.chipInactive} onClick={() => setKind("solo")}>
-              Solo
-            </button>
-            <button type="button" style={kind === "group" ? styles.chipActive : styles.chipInactive} onClick={() => setKind("group")}>
-              Group
-            </button>
+      {existing ? (
+        pageHref && (
+          <p style={styles.hint}>
+            Its page:{" "}
+            <a href={pageHref} target="_blank" rel="noopener noreferrer" style={{ color: "#fff" }}>
+              siang.co{pageHref}
+            </a>
+          </p>
+        )
+      ) : (
+        <label style={styles.label}>
+          Link
+          <span style={styles.slugWrap}>
+            <span style={styles.slugPrefix}>…/shows/</span>
+            <input
+              style={styles.slugInput}
+              value={slug}
+              maxLength={60}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="still-water"
+              onChange={(e) => {
+                setSlugTouched(true);
+                setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
+              }}
+            />
+          </span>
+        </label>
+      )}
+
+      {isExhibition && (
+        <>
+          <div style={styles.linkFields}>
+            <Field label="City">
+              <input style={styles.input} value={city} maxLength={80} onChange={(e) => setCity(e.target.value)} placeholder="Bangkok" />
+            </Field>
+            <Field label="Place">
+              <input style={styles.input} value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Gallery or venue" />
+            </Field>
           </div>
-        </div>
-      </div>
+          <div style={styles.row}>
+            <Field label="First day">
+              <input style={styles.input} type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} />
+            </Field>
+            <Field label="Last day">
+              <input style={styles.input} type="date" value={endsOn} min={startsOn || undefined} onChange={(e) => setEndsOn(e.target.value)} />
+            </Field>
+          </div>
+          <p style={{ ...styles.hint, marginTop: -6 }}>With dates, it shows under Now Showing until its last day.</p>
+          <div style={styles.row}>
+            <Field label="Hours">
+              <input style={styles.input} value={hours} maxLength={160} onChange={(e) => setHours(e.target.value)} placeholder="Tue-Sun 10:00-18:00" />
+            </Field>
+            <Field label="Entry">
+              <input style={styles.input} value={entry} maxLength={80} onChange={(e) => setEntry(e.target.value)} placeholder="Free" />
+            </Field>
+          </div>
+          <div>
+            <span style={{ ...styles.label, display: "block", marginBottom: 6 }}>Type</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" style={kind === "solo" ? styles.chipActive : styles.chipInactive} onClick={() => setKind("solo")} aria-pressed={kind === "solo"}>
+                Solo
+              </button>
+              <button type="button" style={kind === "group" ? styles.chipActive : styles.chipInactive} onClick={() => setKind("group")} aria-pressed={kind === "group"}>
+                Group
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {works.length > 0 && (
         <div>
-          <span style={{ ...styles.label, display: "block", marginBottom: 6 }}>Works in this exhibition</span>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ ...styles.label, display: "block", marginBottom: 6 }}>Works in it</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {works.map((w) => (
               <label key={w.id} style={styles.checkRow}>
                 <input type="checkbox" checked={checked.has(w.id)} onChange={() => toggle(w.id)} />
@@ -1675,15 +1955,24 @@ function NewExhibitionForm({
         </div>
       )}
       {error && <p style={styles.error}>{error}</p>}
-      <button style={styles.saveSm} type="submit" disabled={busy}>
-        {busy ? (
+      <button style={styles.submit} type="submit" disabled={busy}>
+        {busy && !confirmDelete ? (
           <>
-            <Spinner size={14} /> Creating…
+            <Spinner size={14} /> Saving…
           </>
-        ) : (
+        ) : existing ? (
+          "Save"
+        ) : isExhibition ? (
           "Create exhibition"
+        ) : (
+          "Create collection"
         )}
       </button>
+      {onDelete && (
+        <button style={{ ...styles.rowBtnDanger, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={remove} disabled={busy} type="button">
+          {DELETE_ICON} {confirmDelete ? "Tap again to delete" : isExhibition ? "Delete exhibition" : "Delete collection"}
+        </button>
+      )}
     </form>
   );
 }
@@ -1892,7 +2181,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: "inherit",
   },
   darkCard: {
-    background: "#161617",
+    background: "#1b1b1b",
     color: "#fff",
     borderRadius: 20,
     padding: "22px 18px",
@@ -1925,6 +2214,7 @@ const styles: Record<string, React.CSSProperties> = {
   fldH: { fontSize: 15, fontWeight: 800, letterSpacing: "-0.025em", marginTop: 8 },
   form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 18 },
   row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+  row3: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, margin: "12px 0 8px" },
   label: { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.7)" },
   input: {
     width: "100%",
@@ -1949,14 +2239,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: "inherit",
     resize: "vertical",
   },
-  error: { fontSize: 13, color: "#FF6FA5", margin: "10px 0 0" },
+  error: { fontSize: 13, color: "#ff8a8a", margin: "10px 0 0" },
   submit: {
     height: 48,
     padding: "0 24px",
     borderRadius: 999,
     border: 0,
-    background: "#B63878",
-    color: "#fff",
+    background: "#fff",
+    color: "#0f0f0f",
     fontWeight: 700,
     fontSize: 15,
     cursor: "pointer",
@@ -1974,8 +2264,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0 16px",
     borderRadius: 999,
     border: 0,
-    background: "#B63878",
-    color: "#fff",
+    background: "#fff",
+    color: "#0f0f0f",
     fontWeight: 700,
     fontSize: 13.5,
     cursor: "pointer",
@@ -2049,9 +2339,9 @@ const styles: Record<string, React.CSSProperties> = {
     height: 30,
     padding: "0 12px",
     borderRadius: 999,
-    border: "1px solid rgba(255,111,165,.35)",
+    border: "1px solid rgba(255,138,138,.4)",
     background: "none",
-    color: "#FF6FA5",
+    color: "#ff8a8a",
     fontSize: 12.5,
     fontWeight: 600,
     cursor: "pointer",
@@ -2108,7 +2398,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     cursor: "pointer",
   },
-  checkRow: { display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(255,255,255,.85)" },
+  checkRow: { display: "flex", alignItems: "center", gap: 10, minHeight: 40, fontSize: 14.5, color: "rgba(255,255,255,.85)" },
 
   backdrop: { position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 60 },
   sheet: {
@@ -2118,7 +2408,7 @@ const styles: Record<string, React.CSSProperties> = {
     bottom: 0,
     maxWidth: 520,
     margin: "0 auto",
-    background: "#161617",
+    background: "#1b1b1b",
     color: "#fff",
     borderRadius: "20px 20px 0 0",
     padding: "10px 18px calc(24px + env(safe-area-inset-bottom))",
@@ -2381,12 +2671,10 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     border: 0,
     background: "none",
-    color: "#FF6FA5",
+    color: "#ff8a8a",
     fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
     textAlign: "left",
   },
-  qrCodeText: { fontSize: 22, fontWeight: 700, letterSpacing: "0.1em", textAlign: "center", margin: "4px 0 18px" },
-  qrWrap: { display: "flex", justifyContent: "center", padding: 16, background: "#fff", borderRadius: 12, marginBottom: 16 },
 };

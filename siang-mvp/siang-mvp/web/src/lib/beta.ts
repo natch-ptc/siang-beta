@@ -1,4 +1,4 @@
-// The live beta's address and version, set in next.config.ts (/beta-version-1.0).
-export const BETA_PATH = process.env.NEXT_PUBLIC_BETA_PATH ?? "/mvp";
-export const BETA_VERSION = process.env.NEXT_PUBLIC_BETA_VERSION ?? "1.0";
+// Siang opens straight on the app (PRD v3, D10), so the old beta address
+// (/beta-version-1.0) redirects home; see next.config.ts.
+export const BETA_PATH = "/";
 export const DEMO_PATH = "/demo";

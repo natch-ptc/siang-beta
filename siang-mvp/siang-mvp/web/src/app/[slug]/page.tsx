@@ -1,28 +1,34 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ArtistPublicView from "@/components/ArtistPublicView";
+import ArtistProfile from "@/components/ArtistProfile";
+import TabBar from "@/components/TabBar";
 import { createClient } from "@/lib/supabase/server";
-import { fetchArtistBySlug } from "@/lib/queries";
+import { fetchOwnSlug } from "@/lib/queries";
+import { loadArtist } from "@/lib/load";
+import { todayInThailand } from "@/lib/format";
+import { artistShare } from "@/lib/share";
+import app from "@/components/app.module.css";
 
 type Props = { params: Promise<{ slug: string }> };
 
-async function load(slug: string) {
-  const supabase = await createClient();
-  return fetchArtistBySlug(supabase, slug.toLowerCase());
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const found = await load((await params).slug);
-  if (!found) return { title: "Siang.co" };
-  const { artist } = found;
+  const artist = await loadArtist((await params).slug);
+  if (!artist) return { title: "Siang.co" };
   return {
     title: `${artist.name} · Siang.co`,
-    description: artist.bio || `${artist.name} on Siang. Art you can hear.`,
+    description: artist.bio || `${artist.name} on Siang. Art, artists and places, with sound.`,
   };
 }
 
-export default async function ArtistPublicPage({ params }: Props) {
-  const found = await load((await params).slug);
-  if (!found) notFound();
-  return <ArtistPublicView artist={found.artist} links={found.links} />;
+// siang.co/<slug>: an artist's page.
+export default async function ArtistPage({ params }: Props) {
+  const artist = await loadArtist((await params).slug);
+  if (!artist) notFound();
+  const own = (await fetchOwnSlug(await createClient())).slug === artist.slug;
+  return (
+    <main className={app.app}>
+      <ArtistProfile artist={artist} today={todayInThailand()} own={own} share={artistShare(artist)} />
+      <TabBar />
+    </main>
+  );
 }

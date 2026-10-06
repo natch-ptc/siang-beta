@@ -7,10 +7,12 @@ export const slugify = (s: string) =>
     .replace(/^-+|-+$/g, "");
 
 // siang.co/<slug> is the artist's public page, so a slug can't be a path the
-// app already uses (app routes, public folders, the /beta-1.N address).
+// app already uses (app routes, public folders, the old /beta-1.N address).
+// The two-letter routes (/me, /w, /s) are shorter than any slug can be.
 const RESERVED = new Set([
   "app", "api", "art", "audio", "fonts", "login", "logout", "signup", "studio", "mvp", "demo", "beta",
   "join-beta", "claim-your-link", "admin", "about", "help", "settings", "auth", "www", "siang", "static",
+  "artists", "artist", "exhibitions", "exhibition", "places", "place", "shows", "explore", "search", "terms", "privacy",
 ]);
 
 export const SLUG_MIN = 3;

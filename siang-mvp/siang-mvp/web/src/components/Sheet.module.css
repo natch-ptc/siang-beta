@@ -1,0 +1,243 @@
+/* A bottom sheet: the share sheet and the report form slide up in one. */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.62);
+  animation: fade 200ms ease both;
+}
+.sheet {
+  position: fixed;
+  z-index: 61;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: var(--column);
+  max-height: 92dvh;
+  margin: 0 auto;
+  padding: 10px var(--gutter) calc(26px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.8);
+  animation: rise 320ms var(--ease) both;
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+.handle {
+  width: 36px;
+  height: 4px;
+  margin: 4px auto 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.close {
+  width: var(--hit);
+  height: var(--hit);
+  margin-right: -10px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--fg-soft);
+}
+
+/* The label as it will print: white card, QR left, words right. */
+.label {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  color: #0f0f0f;
+}
+.labelQr {
+  flex: none;
+  width: 42%;
+  max-width: 170px;
+  aspect-ratio: 1;
+}
+.labelQr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.labelText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.labelTitle {
+  font-family: var(--font-thai);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.labelSub {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.labelMeta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #6a6a6a;
+}
+.labelFoot {
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #6a6a6a;
+  overflow-wrap: anywhere;
+}
+.labelCode {
+  display: block;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #0f0f0f;
+}
+
+.acts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+.act,
+.actGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 14.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: transform var(--press-dur) var(--ease);
+}
+.act {
+  background: var(--paper);
+  color: var(--on-paper);
+}
+.actGhost {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.act:active,
+.actGhost:active {
+  transform: var(--press);
+}
+.act:disabled,
+.actGhost:disabled {
+  opacity: 0.5;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+
+.link {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--fg-soft);
+  overflow-wrap: anywhere;
+}
+.note {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+.error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/* Kept off screen: the big QR the label and the PNG are drawn from. */
+.offscreen {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.textarea {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px;
+  resize: vertical;
+}
+
+/* Small text buttons that open a sheet (Share, Report). */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: var(--hit);
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: transform var(--press-dur) var(--ease);
+}
+.pill:active {
+  transform: var(--press);
+}
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--hit);
+  font-size: 13px;
+  color: var(--fg-faint);
+}
+.icon {
+  width: var(--hit);
+  height: var(--hit);
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+}
