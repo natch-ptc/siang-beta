@@ -24,7 +24,7 @@ export default function TabBar() {
   const base = pathname === "/demo" || pathname.startsWith("/demo/") ? "/demo" : "";
   const tabs = [
     ...TABS.map((t) => ({ ...t, href: base + t.path || "/", on: pathname === (base + t.path || "/") })),
-    { href: "/me", label: "Profile", icon: NAV_PROFILE, on: pathname === "/me" || pathname === "/studio" },
+    { href: "/me", label: "Profile", icon: NAV_PROFILE, on: ["/me", "/studio", "/saved"].includes(pathname) },
   ];
   return (
     <nav className={styles.tabbar} aria-label="Siang" style={{ viewTransitionName: "tab-bar" }}>

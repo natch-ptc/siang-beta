@@ -225,6 +225,44 @@
 .pill:active {
   transform: var(--press);
 }
+/* "Saved to your list · View", floating just above the tab bar. */
+.toast {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: calc(110px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(340px, calc(100% - 44px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 6px 6px 18px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--on-paper);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.7);
+  animation: toast-in 260ms var(--ease) both;
+}
+.toast a {
+  height: 36px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--on-paper);
+  color: var(--paper);
+  text-decoration: none;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
+
 .quiet {
   display: inline-flex;
   align-items: center;

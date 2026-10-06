@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { dayMonthYear, monthYear } from "@/lib/format";
-import { ABOUT_CHIP, ART_CHIP, COLLECTION_CHIP, LINK_ICON, PIN_SM, SHOWS_CHIP, contactHref, contactIcon, contactLabel } from "@/lib/icons";
+import { SAVE_ICON, ABOUT_CHIP, ART_CHIP, COLLECTION_CHIP, LINK_ICON, PIN_SM, SHOWS_CHIP, contactHref, contactIcon, contactLabel } from "@/lib/icons";
 import type { ShareInfo } from "@/lib/share";
 import { isCollection, type Artist, type Contact } from "@/lib/types";
 import { Avatar, Picture, ShowCard } from "./cards";
@@ -48,9 +48,11 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
         </div>
         <div className={styles.headActs}>
           {own ? (
-            <Link href="/studio" className={styles.edit}>
-              Edit Profile
-            </Link>
+            <>
+              <Link href="/studio" className={styles.edit}>
+                Edit Profile
+              </Link>
+            </>
           ) : (
             <FollowButton slug={artist.slug} name={artist.name} />
           )}
@@ -73,6 +75,13 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
           {PIN_SM}
           {place}
         </a>
+      )}
+
+      {own && (
+        <Link href="/saved" className={styles.place}>
+          {SAVE_ICON}
+          Your list: works you saved, saw and artists you follow
+        </Link>
       )}
 
       <div className={app.chips} role="tablist" aria-label={`${artist.name}'s page`}>
