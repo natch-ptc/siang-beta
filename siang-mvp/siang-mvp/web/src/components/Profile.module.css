@@ -232,29 +232,25 @@
   margin-top: 28px;
 }
 
-/* ── The signed-out Profile tab: "Create your artist profile" ── */
-.steps {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 18px var(--gutter) 0;
-}
-.step {
+/* ── The signed-out Profile tab: "Join Siang Beta" and two buttons ── */
+.join {
+  min-height: calc(100dvh - 260px);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
+  justify-content: center;
+  padding: 0 var(--gutter);
+}
+.joinTitle {
+  font-size: 34px;
   font-weight: 500;
+  line-height: 1.1;
   text-align: center;
 }
-.stepArt {
-  width: 100%;
-  aspect-ratio: 318 / 300;
-  border-radius: var(--radius-art);
-  display: grid;
-  place-items: center;
-  background: var(--surface);
+.joinActs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 28px;
 }
 .heading {
   display: flex;
@@ -271,15 +267,6 @@
   font-size: 14.5px;
   line-height: 1.5;
   color: var(--fg-soft);
-}
-.cta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 22px var(--gutter) 0;
-}
-.cta > * {
-  flex: 1;
 }
 .rows {
   display: flex;
