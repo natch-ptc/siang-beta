@@ -95,7 +95,7 @@ export default function PaperLanding() {
           <Link href={DEMO_PATH} className={styles.cta}>
             Try the demo
           </Link>
-          <Link href="/join-beta" className={`${styles.cta} ${styles.ctaBrand}`}>
+          <Link href="/join" className={`${styles.cta} ${styles.ctaBrand}`}>
             Join the beta
           </Link>
         </nav>

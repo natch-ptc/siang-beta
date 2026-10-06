@@ -7,63 +7,30 @@ import { createClient } from "@/lib/supabase/client";
 import { BACK_CHEVRON_SVG, EYE_ICON, EYE_SLASH_ICON } from "@/lib/icons";
 import Logo from "@/components/Logo";
 
-export type LoginMode = "signin" | "signup";
-
-// Supabase's raw auth errors, reworded so a first-time visitor knows what to do next.
-function friendlyError(message: string, mode: LoginMode) {
-  if (/invalid login credentials/i.test(message)) return "Wrong email or password. No account yet? Create one below.";
-  if (/already registered/i.test(message)) return "This email already has an account. Sign in instead.";
-  if (/email not confirmed/i.test(message)) return "This account hasn't been confirmed yet. Ask the Siang team to confirm it.";
-  if (/password should be at least/i.test(message)) return "Use a password with at least 6 characters.";
-  return mode === "signup" ? `Couldn't create the account: ${message}` : message;
+// Supabase's raw auth errors, reworded so the person knows what to do next.
+function friendlyError(message: string) {
+  if (/invalid login credentials/i.test(message)) return "Wrong email or password. No account yet? Join the beta below.";
+  if (/email not confirmed/i.test(message)) return "Confirm your email first: open the link we sent you.";
+  return message;
 }
 
-export default function LoginClient({ initialMode, initialEmail }: { initialMode: LoginMode; initialEmail: string }) {
+export default function LoginClient({ initialEmail, confirmed }: { initialEmail: string; confirmed: boolean }) {
   const router = useRouter();
-  const [mode, setMode] = useState<LoginMode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [instagram, setInstagram] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const notice = confirmed ? "Your email is confirmed. Sign in to carry on." : null;
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setNotice(null);
     setBusy(true);
-    const supabase = createClient();
-
-    if (mode === "signup") {
-      // Name and Instagram ride along on the account, so the Studio's first
-      // onboarding step can fill them in, even after an email confirmation.
-      const ig = instagram.trim().replace(/^@/, "");
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name: name.trim(), instagram: ig } } });
-      setBusy(false);
-      if (error) {
-        setError(friendlyError(error.message, mode));
-        if (/already registered/i.test(error.message)) setMode("signin");
-        return;
-      }
-      // Also on the beta list, like /join-beta. Best effort: an email already on it is fine.
-      void supabase.from("beta_testers").insert({ name: name.trim(), email, handle: ig || null, source: "signup" });
-      if (!data.session) {
-        setNotice("Check your email to confirm your account, then sign in.");
-        setMode("signin");
-        return;
-      }
-      router.push("/studio");
-      router.refresh();
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await createClient().auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
-      setError(friendlyError(error.message, mode));
+      setError(friendlyError(error.message));
       return;
     }
     router.push("/studio");
@@ -79,20 +46,12 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
           </Link>
           <Logo height={22} />
         </div>
-        <h1 style={styles.h1}>{mode === "signin" ? "Sign in" : "Create your artist profile"}</h1>
+        <h1 style={styles.h1}>Sign in</h1>
         <p style={styles.sub}>
-          {mode === "signin"
-            ? "Manage your artist profile, works and exhibitions."
-            : "Make an account to publish your works, with your own voice, on Siang."}
+          Manage your artist profile, works and exhibitions.
         </p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          {mode === "signup" && (
-            <label style={styles.label}>
-              Your name
-              <input style={styles.input} required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-            </label>
-          )}
           <label style={styles.label}>
             Email
             <input
@@ -114,7 +73,7 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -126,40 +85,19 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
                 {showPassword ? EYE_SLASH_ICON : EYE_ICON}
               </button>
             </span>
-            {mode === "signup" && <span style={styles.hint}>At least 6 characters, so you can sign back in.</span>}
           </label>
-          {mode === "signup" && (
-            <label style={styles.label}>
-              Instagram, optional
-              <input
-                style={styles.input}
-                placeholder="@yourhandle"
-                autoCapitalize="none"
-                autoCorrect="off"
-                value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
-              />
-            </label>
-          )}
 
           {error && <p style={styles.error}>{error}</p>}
           {notice && <p style={styles.notice}>{notice}</p>}
 
           <button style={styles.submit} type="submit" disabled={busy}>
-            {busy ? "..." : mode === "signin" ? "Sign in" : "Continue"}
+            {busy ? "..." : "Sign in"}
           </button>
         </form>
 
-        <button
-          style={styles.toggle}
-          onClick={() => {
-            setMode((m) => (m === "signin" ? "signup" : "signin"));
-            setError(null);
-            setNotice(null);
-          }}
-        >
-          {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
-        </button>
+        <Link href={email ? `/join?email=${encodeURIComponent(email)}` : "/join"} style={styles.toggle}>
+          New here? Join the beta
+        </Link>
       </div>
     </main>
   );

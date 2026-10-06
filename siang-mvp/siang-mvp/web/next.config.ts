@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
       { source: "/mvp", destination: "/", permanent: false },
       { source: "/beta-:old(\\d+\\.\\d+)", destination: "/", permanent: false },
       { source: "/beta-version-:v", destination: "/", permanent: false },
+      // The old waitlist pages: joining now makes the account straight away.
+      { source: "/join-beta", destination: "/join", permanent: false },
+      { source: "/claim-your-link", destination: "/join", permanent: false },
     ];
   },
   async rewrites() {

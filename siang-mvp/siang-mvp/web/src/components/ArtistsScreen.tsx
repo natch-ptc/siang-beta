@@ -80,7 +80,7 @@ export default function ArtistsScreen({ artists, base = "" }: { artists: Artist[
           <p>{query ? "Try another name." : "Artists appear here when they make their profile."}</p>
           {!query && (
             <div className={styles.emptyActs}>
-              <Link href="/login?mode=signup" className={styles.btn}>
+              <Link href="/join" className={styles.btn}>
                 Create your profile
               </Link>
             </div>

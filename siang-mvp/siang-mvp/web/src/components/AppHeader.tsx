@@ -31,7 +31,6 @@ export default function AppHeader({
       <header className={styles.top}>
         <Link href={base || "/"} className={styles.logoLink}>
           <Logo height={30} />
-          {base && <span className={styles.tag}>Demo</span>}
         </Link>
         <div className={styles.topActs}>
           <Link href="/w" className={styles.iconBtn} aria-label="Scan a code or type a work code">

@@ -14,7 +14,7 @@ const TABS = [
 ];
 
 // Pages that are not part of the app: the marketing pages, sign in, the code keypad.
-const HIDDEN = ["/about", "/join-beta", "/claim-your-link", "/login", "/w"];
+const HIDDEN = ["/about", "/join", "/login", "/w", "/auth"];
 
 // Lives in the root layout, so it stays still while pages change under it.
 // Inside the demo (/demo/...) the tabs list the example artists.

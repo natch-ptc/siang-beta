@@ -59,7 +59,7 @@ export default function ExploreScreen({ artists, base = "" }: { artists: Artist[
           <h2>No works here yet</h2>
           <p>Be the first: make your artist profile and publish a work with its sound.</p>
           <div className={styles.emptyActs}>
-            <Link href="/login?mode=signup" className={styles.btn}>
+            <Link href="/join" className={styles.btn}>
               Create your profile
             </Link>
             {!base && (

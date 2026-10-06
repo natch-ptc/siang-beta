@@ -11,7 +11,7 @@ export const slugify = (s: string) =>
 // The two-letter routes (/me, /w, /s) are shorter than any slug can be.
 const RESERVED = new Set([
   "app", "api", "art", "audio", "fonts", "login", "logout", "signup", "studio", "mvp", "demo", "beta",
-  "join-beta", "claim-your-link", "admin", "about", "help", "settings", "auth", "www", "siang", "static",
+  "join", "join-beta", "claim-your-link", "admin", "about", "help", "settings", "auth", "www", "siang", "static",
   "artists", "artist", "exhibitions", "exhibition", "places", "place", "shows", "explore", "search", "terms", "privacy",
 ]);
 

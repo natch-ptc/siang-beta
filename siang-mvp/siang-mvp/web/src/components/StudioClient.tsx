@@ -37,9 +37,8 @@ import { slugify, slugProblem, SLUG_MAX } from "@/lib/slug";
 import { COUNTRIES, findCity, findCountry } from "@/lib/places";
 import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg, photoPosition } from "@/lib/card-cover";
 import type { ShareInfo } from "@/lib/share";
-import { CalendarDots, PaintBrushBroad, UserPlus, Waveform } from "@phosphor-icons/react/dist/ssr";
 import CardFace from "./CardFace";
-import { Mark } from "./Logo";
+import { OnboardingFrame, StepDots, ob, type WelcomeStep } from "./Onboarding";
 import { ShareSheet } from "./ShareButton";
 import Spinner from "./Spinner";
 // The Studio is the artist's profile as visitors see it (ArtistProfile), with
@@ -202,6 +201,8 @@ async function uploadFile(supabase: SupabaseClient, file: File): Promise<string>
   return publicUrl;
 }
 
+export type { WelcomeStep };
+
 export default function StudioClient({
   email,
   suggestedName,
@@ -299,66 +300,6 @@ function ContactFields({ value, onChange }: { value: ContactInputs; onChange: (v
 // skip: 2. profile details, 3. their first work with its sound, 4. an
 // exhibition. The four steps follow the Draft-1 "Create your artist profile"
 // cards. Steps 2 to 4 run over the Studio, from /studio?welcome=profile.
-
-export type WelcomeStep = "profile" | "work" | "show" | "done";
-
-const STEPS = [
-  { id: "link", label: "Profile", icon: <UserPlus size={20} weight="bold" /> },
-  { id: "work", label: "Art & sound", icon: <PaintBrushBroad size={20} weight="bold" /> },
-  { id: "show", label: "Exhibition", icon: <CalendarDots size={20} weight="bold" /> },
-  { id: "done", label: "Your Siang", icon: <Waveform size={20} weight="bold" /> },
-] as const;
-
-// Which of the four steps is current: link and profile are both "Profile".
-function StepDots({ at }: { at: "link" | WelcomeStep }) {
-  const current = at === "profile" ? "link" : at;
-  const index = STEPS.findIndex((s) => s.id === current);
-  return (
-    <ol style={styles.steps} aria-label={`Step ${index + 1} of ${STEPS.length}`}>
-      {STEPS.map((s, i) => (
-        <li key={s.id} style={{ ...styles.step, opacity: i <= index ? 1 : 0.38 }} aria-current={i === index ? "step" : undefined}>
-          <span style={{ ...styles.stepIcon, ...(i === index ? styles.stepIconOn : null) }}>{s.icon}</span>
-          <span>{s.label}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function OnboardingFrame({
-  at,
-  title,
-  lead,
-  onSkip,
-  children,
-}: {
-  at: "link" | WelcomeStep;
-  title: string;
-  lead: string;
-  onSkip?: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={styles.onboarding} role="dialog" aria-modal="true" aria-label={title}>
-      <div style={styles.onboardingTop}>
-        <Mark height={20} />
-        {onSkip ? (
-          <button style={styles.skip} onClick={onSkip} type="button">
-            Skip
-          </button>
-        ) : (
-          <span />
-        )}
-      </div>
-      <div style={styles.onboardingBody}>
-        <StepDots at={at} />
-        <h1 style={styles.onboardingTitle}>{title}</h1>
-        <p style={styles.onboardingLead}>{lead}</p>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 // Step 1: the artist's name and link. The only step that can't be skipped,
 // because everything else hangs off the profile it creates.
@@ -1790,7 +1731,7 @@ function WorkComposer({
           )}
           <b style={{ fontSize: 14, fontWeight: 700 }}>{heading}</b>
           {closeLabel ? (
-            <button style={styles.skip} onClick={onClose} type="button">
+            <button style={ob.skip} onClick={onClose} type="button">
               {closeLabel}
             </button>
           ) : (
@@ -3025,42 +2966,6 @@ const styles: Record<string, React.CSSProperties> = {
   handle: { width: 36, height: 4, borderRadius: 999, background: "rgba(255,255,255,.22)", margin: "6px auto 16px" },
   sheetTitle: { fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 16 },
 
-  onboarding: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 61,
-    maxWidth: 520,
-    margin: "0 auto",
-    background: "#0f0f0f",
-    color: "#fff",
-    display: "flex",
-    flexDirection: "column",
-    animation: "vt-fade 240ms ease-out both",
-  },
-  onboardingTop: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "calc(14px + env(safe-area-inset-top)) 12px 6px 22px",
-    minHeight: 58,
-  },
-  onboardingBody: { flex: 1, overflowY: "auto", padding: "8px 22px calc(32px + env(safe-area-inset-bottom))" },
-  onboardingTitle: { fontSize: 28, fontWeight: 500, lineHeight: 1.15, marginTop: 26 },
-  onboardingLead: { fontSize: 15, lineHeight: 1.5, color: "rgba(255,255,255,.66)", marginTop: 8 },
-  skip: { minHeight: 44, padding: "0 12px", background: "none", border: 0, color: "#fff", fontSize: 15, fontWeight: 500, cursor: "pointer" },
-  steps: { listStyle: "none", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: 0, margin: "4px 0 0" },
-  step: { display: "flex", flexDirection: "column", alignItems: "center", gap: 7, fontSize: 11.5, fontWeight: 500, textAlign: "center", transition: "opacity 300ms" },
-  stepIcon: {
-    width: "100%",
-    aspectRatio: "1.15",
-    maxHeight: 64,
-    borderRadius: 16,
-    display: "grid",
-    placeItems: "center",
-    background: "#1b1b1b",
-    transition: "background 300ms, color 300ms",
-  },
-  stepIconOn: { background: "#fff", color: "#0f0f0f" },
   linkPreview: { fontSize: 20, fontWeight: 500, padding: "14px 16px", borderRadius: 14, background: "#1b1b1b", overflowWrap: "anywhere", margin: 0 },
   avatarPick: {
     width: 96,

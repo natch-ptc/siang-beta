@@ -80,7 +80,7 @@ export default function GuestProfile({ artists }: { artists: Artist[] }) {
         ))}
       </div>
       <div className={styles.cta}>
-        <Link href="/login?mode=signup" className={app.btn}>
+        <Link href="/join" className={app.btn}>
           Create your profile
         </Link>
         <Link href="/login" className={app.btnGhost}>

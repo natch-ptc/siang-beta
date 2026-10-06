@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { fetchArtists, type ArtistSet } from "@/lib/queries";
 import { todayInThailand } from "@/lib/format";
@@ -25,6 +26,15 @@ export default async function TabPage({ tab, set }: { tab: "art" | "exhibitions"
   return (
     <main className={styles.app}>
       <PageTransition>
+      {base && (
+        // The demo leads somewhere: anyone looking at the example artists can make their own page.
+        <Link href="/join" className={styles.demoBar}>
+          <span>
+            <b>These are example artists.</b> Make a page like this for your own work.
+          </span>
+          <span className={styles.demoBarCta}>Join the beta</span>
+        </Link>
+      )}
       {!artists ? (
         <div className={styles.empty}>
           <h2>Couldn&apos;t load Siang</h2>
