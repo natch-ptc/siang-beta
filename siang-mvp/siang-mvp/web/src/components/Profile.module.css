@@ -166,6 +166,21 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+.statement {
+  margin-top: 16px;
+  font-family: var(--font-thai);
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--fg-soft);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.linkSolid {
+  background: var(--paper);
+  color: var(--on-paper);
+  box-shadow: none;
+}
+
 .facts {
   margin-top: 22px;
   border-top: 1px solid var(--line);

@@ -152,6 +152,20 @@
   overflow-wrap: anywhere;
 }
 
+/* More pictures of the work, after the story. */
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 26px -10px 0;
+}
+.gallery img {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-tile);
+  background: var(--surface);
+}
+
 .acts {
   display: flex;
   flex-wrap: wrap;

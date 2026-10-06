@@ -1,13 +1,17 @@
 // Shape mirrors the tables in supabase/migrations; rows are mapped into it by
 // rowToArtist in lib/queries.ts.
 
+export type Availability = "available" | "sold" | "not_for_sale";
+
 export type Work = {
   id: string; // the work's slug, used in its URL (siang.co/<artist>/<id>)
   dbId: string; // artworks.id — what listens are counted against
   code: string; // six-digit work code printed under the work's QR, kept for life
   title: string;
+  titleEn: string; // the title in the other language, when the artist gave one
   description: string;
   coverUrl: string | null;
+  images: string[]; // more pictures of the work, after the cover
   audioUrl: string | null;
   soundCredit: string | null; // set when the sound is an example for the demo, not the artist's own (lib/demo-sounds.ts)
   durationSec: number;
@@ -15,9 +19,16 @@ export type Work = {
   createdAt: string; // ISO timestamp, shown as "28 NOV 2025"
   year: number | null;
   medium: string;
+  sizeText: string; // size as the artist wrote it: "40 x 60 cm", "variable"
   heightCm: number | null;
   widthCm: number | null;
   depthCm: number | null;
+  materials: string;
+  edition: string;
+  credits: string;
+  price: string; // an amount, or "Price on request"
+  availability: Availability | null;
+  locationNow: string; // where the work is now: a venue and city, or the studio
   showSlugs: string[]; // the exhibitions and collections this work is in
 };
 
@@ -55,6 +66,8 @@ export type Artist = {
   country: string;
   geo: string;
   bio: string;
+  statement: string;
+  shopUrl: string;
   avatarUrl: string | null;
   cardBg: string; // css background of the artist's card
   cardInk: string;
@@ -63,7 +76,8 @@ export type Artist = {
   totalListens: number;
   contacts: Contact[];
   links: ArtistLink[];
-  works: Work[];
+  works: Work[]; // published works only
+  takenDown: { id: string; title: string }[]; // works taken down: their links still open a simple page
   shows: Show[]; // exhibitions and collections together; see isCollection()
 };
 

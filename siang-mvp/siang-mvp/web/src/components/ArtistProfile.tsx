@@ -129,6 +129,7 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
       {tab === "about" && (
         <div className={styles.panel} role="tabpanel">
           {artist.bio && <p className={styles.bio}>{artist.bio}</p>}
+          {artist.statement && <p className={styles.statement}>{artist.statement}</p>}
           <dl className={styles.facts}>
             {artist.artType && (
               <div className={styles.fact}>
@@ -147,8 +148,13 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
               <dd>{monthYear(artist.joinedAt, artist.joinedTz)}</dd>
             </div>
           </dl>
-          {(artist.links.length > 0 || artist.contacts.length > 0) && (
+          {(artist.links.length > 0 || artist.contacts.length > 0 || artist.shopUrl) && (
             <nav className={styles.links} aria-label={`${artist.name}'s links`}>
+              {artist.shopUrl && (
+                <a className={`${styles.linkBtn} ${styles.linkSolid}`} href={artist.shopUrl} target="_blank" rel="noopener noreferrer">
+                  Shop
+                </a>
+              )}
               {artist.links.map((l) => (
                 <a key={l.url + l.label} className={styles.linkBtn} href={l.url} target="_blank" rel="noopener noreferrer">
                   {LINK_ICON}

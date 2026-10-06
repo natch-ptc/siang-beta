@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Avatar, Picture, showCover, workTrack } from "@/components/cards";
 import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
@@ -50,6 +50,8 @@ export default async function ShowPage({ params }: Props) {
   const found = await load(slug, showSlug);
   if (!found) notFound();
   const { artist, show, works } = found;
+  // The artist changed their handle: the old address leads to the new one.
+  if (artist.slug !== decodeURIComponent(slug).toLowerCase()) redirect("/" + artist.slug + "/shows/" + show.slug);
   const today = todayInThailand();
   const collection = isCollection(show);
   const timing = showTiming(show, today);

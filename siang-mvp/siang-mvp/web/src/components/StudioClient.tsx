@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { clock, dayMonthYear, monthYear, secs, showWhenText } from "@/lib/format";
+import { clock, dayMonthYear, monthYear, showWhenText } from "@/lib/format";
 import {
   SIGN_OUT_ICON,
   EDIT_ICON,
@@ -61,6 +61,11 @@ export type StudioArtist = {
   card_tint: string;
   joined_at: string | null;
   joined_tz: string | null;
+  // 0016_beta_checklist.sql
+  statement?: string | null;
+  shop_url?: string | null;
+  view_count?: number;
+  slug_changed_at?: string | null;
 };
 
 export type StudioLink = {
@@ -89,7 +94,22 @@ export type StudioArtwork = {
   height_cm?: number | null;
   width_cm?: number | null;
   depth_cm?: number | null;
+  // 0016_beta_checklist.sql
+  title_en?: string | null;
+  size_text?: string | null;
+  materials?: string | null;
+  edition?: string | null;
+  credits?: string | null;
+  price?: string | null;
+  availability?: "available" | "sold" | "not_for_sale" | null;
+  location_now?: string | null;
+  status?: "published" | "taken_down" | "removed";
+  view_count?: number;
+  artwork_blocks?: StudioBlock[];
 };
+
+// A further picture of a work (artwork_blocks of type "image").
+export type StudioBlock = { id: string; type: string; media_url: string | null; sort_order: number };
 
 export type StudioContact = {
   kind: "ig" | "line" | "email" | "web";
@@ -113,7 +133,24 @@ export type StudioExhibition = {
   exhibition_artworks: { artwork_id: string }[];
 };
 
-type WorkDetails = { year: number | null; medium: string | null; height_cm: number | null; width_cm: number | null; depth_cm: number | null };
+type WorkDetails = {
+  title_en: string | null;
+  year: number | null;
+  medium: string | null;
+  size_text: string | null;
+  height_cm: number | null;
+  width_cm: number | null;
+  depth_cm: number | null;
+  materials: string | null;
+  edition: string | null;
+  credits: string | null;
+  price: string | null;
+  availability: "available" | "sold" | "not_for_sale" | null;
+  location_now: string | null;
+};
+
+type WorkUpdate = Partial<WorkDetails> &
+  Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url" | "audio_url" | "status">>;
 
 type ShowFields = {
   title: string;
@@ -208,6 +245,47 @@ export default function StudioClient({
   return <ArtistPage artist={artist} works={works} contacts={contacts} shows={shows} links={links} onSignOut={signOut} />;
 }
 
+type ContactInputs = { ig: string; line: string; email: string; web: string };
+
+// What was typed in the contact fields, cleaned up, or what is wrong with it.
+// An artist needs at least one way to be reached (launch checklist).
+function parseContacts(c: ContactInputs): [StudioContact["kind"], string][] | string {
+  const email = c.email.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Check the email address. It needs an @ and a domain.";
+  const pairs: [StudioContact["kind"], string][] = [
+    ["ig", c.ig.trim().replace(/^@/, "")],
+    ["line", c.line.trim()],
+    ["email", email],
+    ["web", c.web.trim().replace(/^https?:\/\//i, "")],
+  ];
+  if (!pairs.some(([, v]) => v)) return "Add at least one way to contact you: Instagram, LINE, email or a website.";
+  return pairs;
+}
+
+function ContactFields({ value, onChange }: { value: ContactInputs; onChange: (v: ContactInputs) => void }) {
+  const set = (key: keyof ContactInputs) => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...value, [key]: e.target.value });
+  return (
+    <>
+      <div style={styles.fldH}>Contact</div>
+      <p style={{ ...styles.hint, marginTop: -6 }}>At least one, so people can reach you about your work.</p>
+      <div style={styles.row}>
+        <Field label="Instagram">
+          <input style={styles.input} placeholder="@handle" autoCapitalize="none" value={value.ig} onChange={set("ig")} />
+        </Field>
+        <Field label="LINE ID">
+          <input style={styles.input} autoCapitalize="none" value={value.line} onChange={set("line")} />
+        </Field>
+      </div>
+      <Field label="Email">
+        <input style={styles.input} type="email" value={value.email} onChange={set("email")} />
+      </Field>
+      <Field label="Website">
+        <input style={styles.input} inputMode="url" autoCapitalize="none" placeholder="example.com" value={value.web} onChange={set("web")} />
+      </Field>
+    </>
+  );
+}
+
 function CreateProfile() {
   const router = useRouter();
   const supabase = createClient();
@@ -218,6 +296,8 @@ function CreateProfile() {
   const [discipline, setDiscipline] = useState("");
   const [place, setPlace] = useState<Place>({ based: "", country: "Thailand", lat: null, lng: null });
   const [bio, setBio] = useState("");
+  const [contact, setContact] = useState<ContactInputs>({ ig: "", line: "", email: "", web: "" });
+  const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -227,6 +307,19 @@ function CreateProfile() {
     const problem = slugProblem(slug);
     if (problem) {
       setError(`Your link: ${problem}`);
+      return;
+    }
+    if (!place.based.trim()) {
+      setError("Add the city you work in.");
+      return;
+    }
+    const contacts = parseContacts(contact);
+    if (typeof contacts === "string") {
+      setError(contacts);
+      return;
+    }
+    if (!rights) {
+      setError("Tick the box to confirm you have the rights to what you upload.");
       return;
     }
     setBusy(true);
@@ -240,25 +333,31 @@ function CreateProfile() {
       return;
     }
 
-    const { error } = await supabase.from("artists").insert({
+    const row = {
       user_id: user.id,
       slug,
-      name,
+      name: name.trim(),
       discipline: discipline || null,
       based: place.based.trim() || null,
       country: place.country.trim() || null,
       lat: place.lat,
       lng: place.lng,
-      bio: bio || null,
+      bio: bio.trim() || null,
       ...PLAIN_CARD,
       joined_tz: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
-    });
-
-    setBusy(false);
-    if (error) {
-      setError(slugTakenMessage(error.message, error.code));
+    };
+    let res = await supabase.from("artists").insert({ ...row, rights_confirmed_at: new Date().toISOString() }).select("id").single<{ id: string }>();
+    // Signing up must not wait for the database update: without the column, the tick is simply not recorded.
+    if (isMissingColumn(res.error)) res = await supabase.from("artists").insert(row).select("id").single<{ id: string }>();
+    if (res.error || !res.data) {
+      setBusy(false);
+      setError(res.error ? slugTakenMessage(res.error.message, res.error.code) : "Could not create the profile.");
       return;
     }
+    const artistId = res.data.id;
+    await supabase.from("artist_contacts").insert(contacts.filter(([, v]) => v).map(([kind, value]) => ({ artist_id: artistId, kind, value })));
+
+    setBusy(false);
     router.refresh();
   }
 
@@ -285,14 +384,21 @@ function CreateProfile() {
             setSlug(v);
           }}
         />
-        <p style={{ ...styles.hint, marginTop: -6 }}>Your page and QR codes use this address. English letters, numbers and dashes.</p>
+        <p style={{ ...styles.hint, marginTop: -6 }}>
+          Your page and QR codes use this address. 3 to 30 English letters, numbers and dashes. You can change it once.
+        </p>
         <ArtTypeField value={discipline} onChange={setDiscipline} required />
         <PlacePicker value={place} onChange={setPlace} />
         <label style={styles.label}>
           <span style={{ display: "flex", justifyContent: "space-between" }}>
-            Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
+            Short bio, optional <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
           </span>
           <textarea style={styles.textarea} value={bio} maxLength={BIO_LIMIT} onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))} rows={3} />
+        </label>
+        <ContactFields value={contact} onChange={setContact} />
+        <label style={styles.checkRow}>
+          <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} />
+          <span>I own or have the rights to what I upload.</span>
         </label>
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.submit} type="submit" disabled={busy}>
@@ -532,7 +638,7 @@ function ArtistPage({
     exhibitionId: string | null;
     details: WorkDetails;
   }) {
-    const base = slugify(fields.title);
+    const base = slugify(fields.details.title_en || fields.title);
     const slug = base && base !== "shows" ? base : `work-${Date.now()}`;
     const row = {
       artist_id: artist.id,
@@ -545,16 +651,27 @@ function ArtistPage({
       audio_url: fields.audioUrl,
       sort_order: rows.length,
     };
-    let details: Partial<WorkDetails> = withFilled(fields.details, false);
-    let res = await supabase.from("artworks").insert({ ...row, ...details }).select(WORK_COLUMNS).single();
+    // Publishing must not wait for a database update: if the newest columns
+    // are missing the work goes live with the older set, and with none of
+    // them if those are missing too. The details can be added afterwards.
+    const filled = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v != null));
+    const { year, medium, height_cm, width_cm, depth_cm, ...newer } = fields.details;
+    const older = filled({ year, medium, height_cm, width_cm, depth_cm });
+    let saved: Record<string, unknown> = { ...older, ...filled(newer) };
+    let res = await supabase.from("artworks").insert({ ...row, ...saved }).select(WORK_COLUMNS).single();
     if (isMissingColumn(res.error)) {
-      // Publishing must not wait for the database update: the work goes live
-      // without its year, medium and size, which can be added afterwards.
-      details = {};
+      saved = older;
+      res = await supabase.from("artworks").insert({ ...row, ...saved }).select(WORK_COLUMNS).single();
+    }
+    if (isMissingColumn(res.error)) {
+      saved = {};
       res = await supabase.from("artworks").insert(row).select(WORK_COLUMNS).single();
     }
-    if (res.error || !res.data) return { error: res.error?.message ?? "Could not publish the work." };
-    const work = { ...(res.data as StudioArtwork), ...details };
+    if (res.error || !res.data) {
+      const taken = res.error?.code === "23505";
+      return { error: taken ? "You already have a work with that link. Change its English title a little." : res.error?.message ?? "Could not publish the work." };
+    }
+    const work: StudioArtwork = { ...(res.data as StudioArtwork), ...saved, artwork_blocks: [] };
 
     if (fields.exhibitionId) {
       await supabase.from("exhibition_artworks").insert({ exhibition_id: fields.exhibitionId, artwork_id: work.id });
@@ -569,15 +686,17 @@ function ArtistPage({
     return {};
   }
 
-  async function updateWork(
-    id: string,
-    fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url" | "year" | "medium" | "height_cm" | "width_cm" | "depth_cm">>
-  ) {
+  async function updateWork(id: string, fields: WorkUpdate) {
     const { error } = await supabase.from("artworks").update(fields).eq("id", id);
     if (error) return isMissingColumn(error) ? NEEDS_MIGRATION : error.message;
     setRows((r) => r.map((w) => (w.id === id ? { ...w, ...fields } : w)));
     router.refresh();
     return null;
+  }
+
+  function setWorkImages(id: string, artwork_blocks: StudioBlock[]) {
+    setRows((r) => r.map((w) => (w.id === id ? { ...w, artwork_blocks } : w)));
+    router.refresh();
   }
 
   async function deleteWork(id: string) {
@@ -786,14 +905,23 @@ function ArtistPage({
             <span>Upload a work</span>
           </button>
           {rows.map((w) => (
-            <button key={w.id} className={pf.tile} onClick={() => setSheet({ work: w })} type="button" aria-label={`Edit ${w.title}`}>
+            <button
+              key={w.id}
+              className={pf.tile}
+              style={(w.status ?? "published") === "published" ? undefined : { opacity: 0.5 }}
+              onClick={() => setSheet({ work: w })}
+              type="button"
+              aria-label={`Edit ${w.title}`}
+            >
               <span className={pf.tileImg} style={{ background: w.cover_url ? `center/cover no-repeat url("${w.cover_url}")` : "var(--surface-hi)" }} />
               <span className={pf.tileText}>
                 <span className={pf.tileTitle}>{w.title}</span>
                 <span className={pf.tileDate}>{dayMonthYear(w.created_at)}</span>
               </span>
               <span className={pf.tileFoot}>
-                {w.duration_sec ? clock(w.duration_sec) : "No sound"} · {w.listen_count.toLocaleString()} listens
+                {(w.status ?? "published") !== "published"
+                  ? "Taken down"
+                  : `${(w.view_count ?? 0).toLocaleString()} views · ${w.audio_url ? `${w.listen_count.toLocaleString()} listens` : "no sound"}`}
               </span>
             </button>
           ))}
@@ -822,6 +950,9 @@ function ArtistPage({
 
       {tab === "about" && (
         <div className={pf.panel} role="tabpanel">
+          <p className={st.cardHint} style={{ marginTop: 0, marginBottom: 14 }}>
+            The numbers here are seen only by you. Your own visits are not counted.
+          </p>
           {artist.bio ? (
             <p className={pf.bio}>{artist.bio}</p>
           ) : (
@@ -839,7 +970,15 @@ function ArtistPage({
               <dd>{monthYear(artist.joined_at, artist.joined_tz)}</dd>
             </div>
             <div className={pf.fact}>
-              <dt>Listens, seen only by you</dt>
+              <dt>Profile views</dt>
+              <dd>{(artist.view_count ?? 0).toLocaleString()}</dd>
+            </div>
+            <div className={pf.fact}>
+              <dt>Work views</dt>
+              <dd>{rows.reduce((sum, w) => sum + (w.view_count ?? 0), 0).toLocaleString()}</dd>
+            </div>
+            <div className={pf.fact}>
+              <dt>Listens</dt>
               <dd>{listens.toLocaleString()}</dd>
             </div>
           </dl>
@@ -975,6 +1114,7 @@ function ArtistPage({
           onUpdate={updateWork}
           onDelete={deleteWork}
           onShowQR={() => setSheet({ qr: sheet.work })}
+          onImages={setWorkImages}
         />
       )}
       {sheet && typeof sheet === "object" && "qr" in sheet && <ShareSheet info={workShare(sheet.qr)} onClose={() => setSheet(null)} />}
@@ -1024,13 +1164,18 @@ function EditProfileForm({
   const [discipline, setDiscipline] = useState(artist.discipline ?? "");
   const [place, setPlace] = useState<Place>({ based: artist.based ?? "", country: artist.country ?? "", lat: artist.lat, lng: artist.lng });
   const [bio, setBio] = useState(artist.bio ?? "");
-  const [ig, setIg] = useState(contactValue(contacts, "ig") ? "@" + contactValue(contacts, "ig") : "");
-  const [line, setLine] = useState(contactValue(contacts, "line"));
-  const [emailContact, setEmailContact] = useState(contactValue(contacts, "email"));
-  const [web, setWeb] = useState(contactValue(contacts, "web"));
+  const [statement, setStatement] = useState(artist.statement ?? "");
+  const [shop, setShop] = useState(artist.shop_url ?? "");
+  const [contact, setContact] = useState<ContactInputs>({
+    ig: contactValue(contacts, "ig") ? "@" + contactValue(contacts, "ig") : "",
+    line: contactValue(contacts, "line"),
+    email: contactValue(contacts, "email"),
+    web: contactValue(contacts, "web"),
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const slugChanged = slug !== artist.slug;
+  const slugUsed = !!artist.slug_changed_at; // a handle can be changed once
 
   async function save() {
     setError(null);
@@ -1039,43 +1184,57 @@ function EditProfileForm({
       setError("Add your name. It is the first thing visitors read.");
       return;
     }
-    const trimmedEmail = emailContact.trim();
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Check the email address. It needs an @ and a domain.");
-      return;
-    }
     const problem = slugChanged ? slugProblem(slug) : null;
     if (problem) {
       setError(`Your link: ${problem}`);
       return;
     }
-
-    setBusy(true);
-    const { error: updateError } = await supabase
-      .from("artists")
-      .update({
-        name: trimmedName,
-        slug,
-        discipline: discipline.trim() || null,
-        based: place.based.trim() || null,
-        country: place.country.trim() || null,
-        lat: place.lat,
-        lng: place.lng,
-        bio: bio.trim() || null,
-      })
-      .eq("id", artist.id);
-    if (updateError) {
-      setBusy(false);
-      setError(slugTakenMessage(updateError.message, updateError.code));
+    if (!discipline) {
+      setError("Choose your main art type.");
+      return;
+    }
+    if (!place.based.trim()) {
+      setError("Add the city you work in.");
+      return;
+    }
+    const contactPairs = parseContacts(contact);
+    if (typeof contactPairs === "string") {
+      setError(contactPairs);
+      return;
+    }
+    const shopUrl = shop.trim() ? normalizeUrl(shop) : null;
+    if (shop.trim() && !shopUrl) {
+      setError("Check the shop link. It should look like example.com/shop.");
       return;
     }
 
-    const contactPairs: [StudioContact["kind"], string][] = [
-      ["ig", ig.trim().replace(/^@/, "")],
-      ["line", line.trim()],
-      ["email", trimmedEmail],
-      ["web", web.trim().replace(/^https?:\/\//i, "")],
-    ];
+    setBusy(true);
+    const base = {
+      name: trimmedName,
+      slug,
+      discipline,
+      based: place.based.trim() || null,
+      country: place.country.trim() || null,
+      lat: place.lat,
+      lng: place.lng,
+      bio: bio.trim() || null,
+    };
+    // The newer columns are only sent when they change, so saving still works
+    // on a database that doesn't have them yet.
+    const extra: Record<string, string | null> = {};
+    if (statement.trim() !== (artist.statement ?? "")) extra.statement = statement.trim() || null;
+    if (shopUrl !== (artist.shop_url ?? null)) extra.shop_url = shopUrl;
+    if (slugChanged) {
+      extra.previous_slug = artist.slug;
+      extra.slug_changed_at = new Date().toISOString();
+    }
+    const { error: updateError } = await supabase.from("artists").update({ ...base, ...extra }).eq("id", artist.id);
+    if (updateError) {
+      setBusy(false);
+      setError(isMissingColumn(updateError) ? NEEDS_MIGRATION : slugTakenMessage(updateError.message, updateError.code));
+      return;
+    }
+
     const toUpsert = contactPairs.filter(([, v]) => v).map(([kind, value]) => ({ artist_id: artist.id, kind, value }));
     const toDelete = contactPairs.filter(([, v]) => !v).map(([kind]) => kind);
     if (toUpsert.length) await supabase.from("artist_contacts").upsert(toUpsert, { onConflict: "artist_id,kind" });
@@ -1091,12 +1250,18 @@ function EditProfileForm({
       <Field label="Name">
         <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <SlugField value={slug} onChange={setSlug} />
-      <p style={{ ...styles.hint, marginTop: -6, color: slugChanged ? "#ff8a8a" : undefined }}>
-        {slugChanged
-          ? `QR codes and links you already shared point to siang.co/${artist.slug} and will stop working.`
-          : "Changing your name doesn't change your link."}
-      </p>
+      {slugUsed ? (
+        <p style={styles.hint}>Your link is siang.co/{artist.slug}. It has been changed once and can&apos;t be changed again.</p>
+      ) : (
+        <>
+          <SlugField value={slug} onChange={setSlug} />
+          <p style={{ ...styles.hint, marginTop: -6, color: slugChanged ? "#ff8a8a" : undefined }}>
+            {slugChanged
+              ? `You can change your link once. siang.co/${artist.slug} and the QR codes you printed will keep working and lead to the new one.`
+              : "Changing your name doesn't change your link. The link itself can be changed once."}
+          </p>
+        </>
+      )}
       <ArtTypeField value={discipline} onChange={setDiscipline} />
       <PlacePicker value={place} onChange={setPlace} />
       <label style={styles.label}>
@@ -1105,19 +1270,13 @@ function EditProfileForm({
         </span>
         <textarea style={styles.textarea} rows={3} maxLength={BIO_LIMIT} value={bio} onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))} />
       </label>
-      <div style={styles.fldH}>Contact</div>
-      <Field label="Instagram">
-        <input style={styles.input} placeholder="@handle" value={ig} onChange={(e) => setIg(e.target.value)} />
+      <Field label="Full statement, optional">
+        <textarea style={styles.textarea} rows={5} maxLength={4000} value={statement} onChange={(e) => setStatement(e.target.value)} />
       </Field>
-      <Field label="LINE ID">
-        <input style={styles.input} value={line} onChange={(e) => setLine(e.target.value)} />
+      <Field label="Shop link, optional">
+        <input style={styles.input} inputMode="url" autoCapitalize="none" placeholder="example.com/shop" value={shop} onChange={(e) => setShop(e.target.value)} />
       </Field>
-      <Field label="Email">
-        <input style={styles.input} type="email" value={emailContact} onChange={(e) => setEmailContact(e.target.value)} />
-      </Field>
-      <Field label="Website">
-        <input style={styles.input} value={web} onChange={(e) => setWeb(e.target.value)} />
-      </Field>
+      <ContactFields value={contact} onChange={setContact} />
       <button style={{ ...styles.rowBtn, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onEditLinks} type="button">
         {LINK_ICON} Edit links
       </button>
@@ -1331,7 +1490,6 @@ function WorkComposer({
   const [details, setDetails] = useState<DetailInputs>({ ...EMPTY_DETAILS, year: String(new Date().getFullYear()) });
 
   const [title, setTitle] = useState("");
-  const [titleEn, setTitleEn] = useState("");
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const [soundName, setSoundName] = useState<string | null>(null);
@@ -1384,13 +1542,13 @@ function WorkComposer({
       setError("Add a cover image. It is how people find the work.");
       return;
     }
-    if (!audioUrl && !description.trim()) {
-      setError("Add a sound, or write something about the work.");
-      return;
-    }
     const parsed = parseDetails(details);
     if (typeof parsed === "string") {
       setError(parsed);
+      return;
+    }
+    if (!audioUrl && !description.trim()) {
+      setError("Add a sound, or write something about the work.");
       return;
     }
     setBusy(true);
@@ -1401,12 +1559,12 @@ function WorkComposer({
 
   function fillSample() {
     setTitle("น้ำนิ่ง (ตัวอย่าง)");
-    setTitleEn("Still Water (sample)");
+    setDetails((d) => ({ ...d, titleEn: "Still Water (sample)", medium: "Celadon", size: "30 x 30 x 12 cm" }));
     setAddText(true);
     setDescription("Thrown celadon, recorded inside the kiln while it fires.");
   }
 
-  const linkSlug = slugify(titleEn || title);
+  const linkSlug = slugify(details.titleEn || title);
 
   return (
     <>
@@ -1442,14 +1600,15 @@ function WorkComposer({
             </button>
             <input ref={coverRef} type="file" accept="image/*" hidden onChange={handleCover} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <input style={styles.titleInput} placeholder="ชื่องาน" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input style={styles.titleInput} placeholder="ชื่องาน / Title" value={title} onChange={(e) => setTitle(e.target.value)} />
               <input
                 style={{ ...styles.titleInput, marginBottom: 4 }}
-                placeholder="Title in English (optional)"
-                value={titleEn}
-                onChange={(e) => setTitleEn(e.target.value)}
+                placeholder="Title in the other language (optional)"
+                value={details.titleEn}
+                maxLength={200}
+                onChange={(e) => setDetails({ ...details, titleEn: e.target.value })}
               />
-              {linkSlug && <p style={styles.composerHint}>Link: siang.co/{artistSlug}/{linkSlug} (from the English title)</p>}
+              {linkSlug && <p style={styles.composerHint}>Link: siang.co/{artistSlug}/{linkSlug}</p>}
             </div>
           </div>
 
@@ -1492,14 +1651,14 @@ function WorkComposer({
           )}
           <input ref={soundRef} type="file" accept="audio/*" hidden onChange={handleSound} />
 
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <span style={styles.chipSmActive}>{MUSIC_ICON} Sound</span>
             <button type="button" style={addText ? styles.chipSmActive : styles.chipSmInactive} onClick={() => setAddText((a) => !a)}>
               {TEXT_ICON} Text
             </button>
-            <button type="button" style={styles.chipSmInactive} onClick={() => coverRef.current?.click()}>
-              {IMAGE_ICON} Image
-            </button>
+            <span style={styles.chipSmDisabled} title="Add more images after publishing, from the work's edit screen">
+              {IMAGE_ICON} More images after publishing
+            </span>
             <span style={styles.chipSmDisabled} title="Video isn't supported yet">
               {VIDEO_ICON} Video
             </span>
@@ -1508,8 +1667,8 @@ function WorkComposer({
           {addText && (
             <textarea
               style={{ ...styles.textarea, width: "100%", marginTop: 10, boxSizing: "border-box" }}
-              rows={3}
-              placeholder="Say something about this work"
+              rows={4}
+              placeholder="The story of this work"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -1522,11 +1681,7 @@ function WorkComposer({
                 <span style={styles.composerSecLabel}>Optional</span>
               </div>
               <div style={styles.chipRow}>
-                <button
-                  type="button"
-                  style={exhibitionId === null ? styles.chipActive : styles.chipInactive}
-                  onClick={() => setExhibitionId(null)}
-                >
+                <button type="button" style={exhibitionId === null ? styles.chipActive : styles.chipInactive} onClick={() => setExhibitionId(null)}>
                   None
                 </button>
                 {shows.map((sh) => (
@@ -1564,39 +1719,52 @@ function WorkComposer({
   );
 }
 
-// Opened by tapping a work's tile: change its cover, fix its details, print
-// its QR, or delete it.
+const detailInputsOf = (work: StudioArtwork): DetailInputs => ({
+  titleEn: work.title_en ?? "",
+  year: work.year ? String(work.year) : "",
+  medium: work.medium ?? "",
+  size: work.size_text ?? "",
+  height: work.height_cm ? String(work.height_cm) : "",
+  width: work.width_cm ? String(work.width_cm) : "",
+  depth: work.depth_cm ? String(work.depth_cm) : "",
+  materials: work.materials ?? "",
+  edition: work.edition ?? "",
+  credits: work.credits ?? "",
+  price: work.price ?? "",
+  availability: work.availability ?? "",
+  location: work.location_now ?? "",
+});
+
+// Opened by tapping a work's tile: change its cover, sound and details, add
+// more pictures, print its label, take it down or put it back.
 function WorkSheet({
   work,
   onClose,
   onUpdate,
   onDelete,
   onShowQR,
+  onImages,
 }: {
   work: StudioArtwork;
   onClose: () => void;
-  onUpdate: (
-    id: string,
-    fields: Partial<Pick<StudioArtwork, "title" | "description" | "duration_sec" | "cover_url" | "year" | "medium" | "height_cm" | "width_cm" | "depth_cm">>
-  ) => Promise<string | null>;
+  onUpdate: (id: string, fields: WorkUpdate) => Promise<string | null>;
   onDelete: (id: string) => Promise<string | null>;
   onShowQR: () => void;
+  onImages: (id: string, blocks: StudioBlock[]) => void;
 }) {
-  const before: DetailInputs = {
-    year: work.year ? String(work.year) : "",
-    medium: work.medium ?? "",
-    height: work.height_cm ? String(work.height_cm) : "",
-    width: work.width_cm ? String(work.width_cm) : "",
-    depth: work.depth_cm ? String(work.depth_cm) : "",
-  };
-  const [details, setDetails] = useState(before);
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const soundRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
+  const before = detailInputsOf(work);
+  const [details, setDetails] = useState(before);
   const [coverUrl, setCoverUrl] = useState(work.cover_url);
   const [title, setTitle] = useState(work.title);
   const [description, setDescription] = useState(work.description ?? "");
-  const [duration, setDuration] = useState(work.duration_sec ? clock(work.duration_sec) : "");
-  const [uploading, setUploading] = useState(false);
+  const [sound, setSound] = useState({ url: work.audio_url, sec: work.duration_sec });
+  const [images, setImages] = useState<StudioBlock[]>((work.artwork_blocks ?? []).filter((b) => b.type === "image"));
+  const [status, setStatus] = useState(work.status ?? "published");
+  const [uploading, setUploading] = useState<null | "cover" | "sound" | "image">(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1605,7 +1773,7 @@ function WorkSheet({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    setUploading(true);
+    setUploading("cover");
     setError(null);
     try {
       const url = await uploadFile(supabase, file);
@@ -1615,8 +1783,73 @@ function WorkSheet({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
-      setUploading(false);
+      setUploading(null);
     }
+  }
+
+  // Replaces the work's sound, or adds one to a work that had none.
+  async function handleSound(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading("sound");
+    setError(null);
+    try {
+      const [url, sec] = await Promise.all([uploadFile(supabase, file), readAudioDuration(file)]);
+      const err = await onUpdate(work.id, { audio_url: url, duration_sec: sec });
+      if (err) setError(err);
+      else setSound({ url, sec });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not upload that sound file.");
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  async function removeSound() {
+    if (!description.trim()) {
+      setError("A work needs a sound or a text. Write something about it first, then remove the sound.");
+      return;
+    }
+    const err = await onUpdate(work.id, { audio_url: null, duration_sec: null });
+    if (err) setError(err);
+    else setSound({ url: null, sec: null });
+  }
+
+  async function addImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading("image");
+    setError(null);
+    try {
+      const media_url = await uploadFile(supabase, file);
+      const sort_order = images.length ? Math.max(...images.map((b) => b.sort_order)) + 1 : 0;
+      const { data, error } = await supabase
+        .from("artwork_blocks")
+        .insert({ artwork_id: work.id, type: "image", media_url, sort_order })
+        .select("id, type, media_url, sort_order")
+        .single<StudioBlock>();
+      if (error || !data) throw new Error(error?.message ?? "Could not add the image.");
+      const next = [...images, data];
+      setImages(next);
+      onImages(work.id, next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add the image.");
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  async function removeImage(id: string) {
+    const { error } = await supabase.from("artwork_blocks").delete().eq("id", id);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    const next = images.filter((b) => b.id !== id);
+    setImages(next);
+    onImages(work.id, next);
   }
 
   async function save() {
@@ -1626,8 +1859,8 @@ function WorkSheet({
       setError("A work needs a title.");
       return;
     }
-    if (duration && !/^\d+:\d{2}$/.test(duration.trim())) {
-      setError("Write the length as minutes:seconds, like 3:12.");
+    if (!sound.url && !description.trim()) {
+      setError("A work needs a sound or a text.");
       return;
     }
     const parsed = parseDetails(details, false);
@@ -1635,19 +1868,26 @@ function WorkSheet({
       setError(parsed);
       return;
     }
-    // Only send the details when they changed, so an untouched work still
-    // saves on a database that doesn't have those columns yet.
-    const detailsChanged = Object.keys(before).some((k) => before[k as keyof DetailInputs] !== details[k as keyof DetailInputs]);
+    // Only the details that changed are sent, so an untouched work still
+    // saves on a database that doesn't have the newer columns yet.
+    const was = parseDetails(before, false) as WorkDetails;
+    const changed = Object.fromEntries(
+      (Object.keys(parsed) as (keyof WorkDetails)[]).filter((k) => parsed[k] !== was[k]).map((k) => [k, parsed[k]])
+    ) as Partial<WorkDetails>;
     setBusy(true);
-    const err = await onUpdate(work.id, {
-      title: t,
-      description: description.trim() || null,
-      duration_sec: duration ? secs(duration.trim()) : null,
-      ...(detailsChanged ? parsed : {}),
-    });
+    const err = await onUpdate(work.id, { title: t, description: description.trim() || null, ...changed });
     setBusy(false);
     if (err) setError(err);
     else onClose();
+  }
+
+  async function toggleStatus() {
+    const next = status === "published" ? "taken_down" : "published";
+    setBusy(true);
+    const err = await onUpdate(work.id, { status: next });
+    setBusy(false);
+    if (err) setError(err);
+    else setStatus(next);
   }
 
   async function remove() {
@@ -1663,36 +1903,77 @@ function WorkSheet({
 
   return (
     <Sheet title="Edit work" onClose={onClose}>
-      <div style={styles.form}>
+      <div style={{ ...styles.form, marginTop: 0 }}>
+        {status !== "published" && (
+          <p style={styles.notice}>
+            {status === "removed"
+              ? "The Siang team removed this work. Its link shows only the title."
+              : "This work is taken down. Its link, QR and code show only the title and a link to your page."}
+          </p>
+        )}
         <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
           <button
             type="button"
             style={{ ...styles.coverUpload, backgroundImage: coverUrl ? `url("${coverUrl}")` : undefined }}
             onClick={() => fileRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading === "cover"}
             aria-label="Change the cover image"
           >
-            {uploading ? <Spinner size={22} label="Uploading cover" /> : !coverUrl && <>{CAMERA_ICON}<br />Add cover</>}
+            {uploading === "cover" ? <Spinner size={22} label="Uploading cover" /> : !coverUrl && <>{CAMERA_ICON}<br />Add cover</>}
           </button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCover} />
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             <Field label="Title">
               <input style={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} />
             </Field>
-            <Field label="Length">
-              <input style={styles.input} value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="m:ss" inputMode="numeric" />
+            <Field label="Title in the other language">
+              <input style={styles.input} value={details.titleEn} maxLength={200} placeholder="optional" onChange={(e) => setDetails({ ...details, titleEn: e.target.value })} />
             </Field>
           </div>
         </div>
+
+        <div>
+          <span style={{ ...styles.label, display: "block", marginBottom: 6 }}>Sound</span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <button style={{ ...styles.rowBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => soundRef.current?.click()} disabled={uploading === "sound"} type="button">
+              {uploading === "sound" ? <Spinner size={14} /> : MUSIC_ICON} {sound.url ? `Replace sound${sound.sec ? ` (${clock(sound.sec)})` : ""}` : "Add a sound"}
+            </button>
+            {sound.url && (
+              <button style={styles.rowBtn} onClick={removeSound} type="button">
+                Remove sound
+              </button>
+            )}
+          </div>
+          <input ref={soundRef} type="file" accept="audio/*" hidden onChange={handleSound} />
+        </div>
+
         <DetailFields value={details} onChange={setDetails} />
-        <Field label="About this work">
+        <Field label="Story">
           <textarea style={styles.textarea} rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
+
+        <div>
+          <span style={{ ...styles.label, display: "block", marginBottom: 6 }}>More images</span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {images.map((b) => (
+              <span key={b.id} style={{ ...styles.thumb, width: 64, height: 64, position: "relative", backgroundImage: `url("${b.media_url}")`, cursor: "default" }}>
+                <button style={styles.thumbRemove} onClick={() => removeImage(b.id)} aria-label="Remove this image" type="button">
+                  {CLOSE_GLYPH}
+                </button>
+              </span>
+            ))}
+            <button style={{ ...styles.thumb, width: 64, height: 64, borderStyle: "dashed" }} onClick={() => imageRef.current?.click()} disabled={uploading === "image"} aria-label="Add an image" type="button">
+              {uploading === "image" ? <Spinner size={18} label="Uploading image" /> : ADD_ICON}
+            </button>
+          </div>
+          <input ref={imageRef} type="file" accept="image/*" hidden onChange={addImage} />
+        </div>
+
         <p style={styles.hint}>
-          Work code {work.code.slice(0, 3)} {work.code.slice(3)} · {work.listen_count.toLocaleString()} listens
+          Work code {work.code.slice(0, 3)} {work.code.slice(3)} · {(work.view_count ?? 0).toLocaleString()} views · {work.listen_count.toLocaleString()} listens
         </p>
         {error && <p style={styles.error}>{error}</p>}
-        <button style={styles.submit} onClick={save} disabled={busy || uploading} type="button">
+        <button style={styles.submit} onClick={save} disabled={busy || uploading !== null} type="button">
           {busy && !confirmDelete ? (
             <>
               <Spinner /> Saving…
@@ -1705,36 +1986,87 @@ function WorkSheet({
           <button style={{ ...styles.rowBtn, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onShowQR} type="button">
             {QR_GLYPH} Label and QR to print
           </button>
-          <button style={{ ...styles.rowBtnDanger, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={remove} disabled={busy} type="button">
-            {DELETE_ICON} {confirmDelete ? "Tap again to delete" : "Delete work"}
-          </button>
+          {status !== "removed" && (
+            <button style={styles.rowBtn} onClick={toggleStatus} disabled={busy} type="button">
+              {status === "published" ? "Take down" : "Put back online"}
+            </button>
+          )}
+          {/* Deleting breaks the work's printed QR and code for good, so it is only offered once the work is already down. */}
+          {status !== "published" && (
+            <button style={{ ...styles.rowBtnDanger, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={remove} disabled={busy} type="button">
+              {DELETE_ICON} {confirmDelete ? "Tap again to delete for good" : "Delete for good"}
+            </button>
+          )}
         </div>
       </div>
     </Sheet>
   );
 }
 
-type DetailInputs = { year: string; medium: string; height: string; width: string; depth: string };
-const EMPTY_DETAILS: DetailInputs = { year: "", medium: "", height: "", width: "", depth: "" };
+type DetailInputs = {
+  titleEn: string;
+  year: string;
+  medium: string;
+  size: string;
+  height: string;
+  width: string;
+  depth: string;
+  materials: string;
+  edition: string;
+  credits: string;
+  price: string;
+  availability: string;
+  location: string;
+};
+const EMPTY_DETAILS: DetailInputs = {
+  titleEn: "",
+  year: "",
+  medium: "",
+  size: "",
+  height: "",
+  width: "",
+  depth: "",
+  materials: "",
+  edition: "",
+  credits: "",
+  price: "",
+  availability: "",
+  location: "",
+};
 
 // Turns what was typed into a work's details, or says what is wrong with it.
-// A new work needs its year and medium (PRD 7.2); size is asked for but not
-// forced, because some works (a sound piece, a room) have none to give.
+// A new work needs its year, medium and size (launch checklist); a work made
+// before those fields existed can still be saved without them.
 function parseDetails(d: DetailInputs, required = true): WorkDetails | string {
   const year = d.year.trim() ? Number(d.year) : null;
   if (year != null && !(Number.isInteger(year) && year >= 1000 && year <= 2100)) return "Write the year as four digits, like 2025.";
   if (required && !year) return "Add the year the work was made.";
-  const medium = d.medium.trim() || null;
-  if (required && !medium) return "Add the medium, like Oil on canvas.";
+  const text = (v: string) => v.trim() || null;
+  if (required && !text(d.medium)) return "Add the medium, like Oil on canvas.";
+  if (required && !text(d.size)) return "Add the size, like 40 x 60 cm. Write “variable” if it has no fixed size.";
   const cm = (v: string) => (v.trim() ? Number(v.replace(",", ".")) : null);
   const [height_cm, width_cm, depth_cm] = [cm(d.height), cm(d.width), cm(d.depth)];
-  if ([height_cm, width_cm, depth_cm].some((n) => n != null && !(n > 0))) return "Write sizes in centimetres, as numbers.";
+  if ([height_cm, width_cm, depth_cm].some((n) => n != null && !(n > 0))) return "Write the measurements in centimetres, as numbers.";
   if ((height_cm == null) !== (width_cm == null)) return "Give both the height and the width, or leave both empty.";
-  return { year, medium, height_cm, width_cm, depth_cm };
+  return {
+    title_en: text(d.titleEn),
+    year,
+    medium: text(d.medium),
+    size_text: text(d.size),
+    height_cm,
+    width_cm,
+    depth_cm,
+    materials: text(d.materials),
+    edition: text(d.edition),
+    credits: text(d.credits),
+    price: text(d.price),
+    availability: (d.availability || null) as WorkDetails["availability"],
+    location_now: text(d.location),
+  };
 }
 
 function DetailFields({ value, onChange }: { value: DetailInputs; onChange: (v: DetailInputs) => void }) {
-  const set = (key: keyof DetailInputs) => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...value, [key]: e.target.value });
+  const set = (key: keyof DetailInputs) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => onChange({ ...value, [key]: e.target.value });
   return (
     <>
       <div style={styles.linkFields}>
@@ -1745,18 +2077,53 @@ function DetailFields({ value, onChange }: { value: DetailInputs; onChange: (v: 
           <input style={styles.input} maxLength={120} placeholder="Oil on canvas" value={value.medium} onChange={set("medium")} />
         </Field>
       </div>
-      <div style={styles.row3}>
-        <Field label="Height, cm">
-          <input style={styles.input} inputMode="decimal" value={value.height} onChange={set("height")} />
-        </Field>
-        <Field label="Width, cm">
-          <input style={styles.input} inputMode="decimal" value={value.width} onChange={set("width")} />
-        </Field>
-        <Field label="Depth, cm">
-          <input style={styles.input} inputMode="decimal" placeholder="optional" value={value.depth} onChange={set("depth")} />
-        </Field>
-      </div>
-      <p style={styles.hint}>Height and width draw the work next to a person, so people see its real size.</p>
+      <Field label="Size">
+        <input style={styles.input} maxLength={120} placeholder="40 x 60 cm" value={value.size} onChange={set("size")} />
+      </Field>
+
+      <details style={styles.more}>
+        <summary style={styles.moreSummary}>More details, optional</summary>
+        <div style={{ ...styles.form, marginTop: 12 }}>
+          <div style={styles.row3}>
+            <Field label="Height, cm">
+              <input style={styles.input} inputMode="decimal" value={value.height} onChange={set("height")} />
+            </Field>
+            <Field label="Width, cm">
+              <input style={styles.input} inputMode="decimal" value={value.width} onChange={set("width")} />
+            </Field>
+            <Field label="Depth, cm">
+              <input style={styles.input} inputMode="decimal" value={value.depth} onChange={set("depth")} />
+            </Field>
+          </div>
+          <p style={{ ...styles.hint, marginTop: -6 }}>Height and width as numbers draw the work next to a person, so people see its real size.</p>
+          <Field label="Materials">
+            <input style={styles.input} maxLength={300} value={value.materials} onChange={set("materials")} />
+          </Field>
+          <div style={styles.row}>
+            <Field label="Edition">
+              <input style={styles.input} maxLength={120} placeholder="2 of 5" value={value.edition} onChange={set("edition")} />
+            </Field>
+            <Field label="Price">
+              <input style={styles.input} maxLength={80} placeholder="12,000 THB, or on request" value={value.price} onChange={set("price")} />
+            </Field>
+          </div>
+          <label style={styles.label}>
+            Availability
+            <select style={styles.select} value={value.availability} onChange={set("availability")}>
+              <option value="">Not shown</option>
+              <option value="available">Available</option>
+              <option value="sold">Sold</option>
+              <option value="not_for_sale">Not for sale</option>
+            </select>
+          </label>
+          <Field label="Where it is now">
+            <input style={styles.input} maxLength={160} placeholder="Venue and city, or Studio" value={value.location} onChange={set("location")} />
+          </Field>
+          <Field label="Credits">
+            <input style={styles.input} maxLength={500} placeholder="Photographer, fabricator, collaborators" value={value.credits} onChange={set("credits")} />
+          </Field>
+        </div>
+      </details>
     </>
   );
 }
@@ -2325,7 +2692,7 @@ const styles: Record<string, React.CSSProperties> = {
   workTitle: { display: "block", fontSize: 14.5, fontWeight: 600, color: "#fff" },
   workMeta: { display: "block", fontSize: 12.5, color: "rgba(255,255,255,.52)", marginTop: 2 },
   rowBtn: {
-    height: 30,
+    height: 38,
     padding: "0 12px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,.16)",
@@ -2336,7 +2703,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   rowBtnDanger: {
-    height: 30,
+    height: 38,
     padding: "0 12px",
     borderRadius: 999,
     border: "1px solid rgba(255,138,138,.4)",
@@ -2396,6 +2763,23 @@ const styles: Record<string, React.CSSProperties> = {
     color: "rgba(255,255,255,.7)",
     fontSize: 13.5,
     fontWeight: 600,
+    cursor: "pointer",
+  },
+  notice: { fontSize: 13.5, lineHeight: 1.45, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,.08)", margin: 0 },
+  more: { borderTop: "1px solid rgba(255,255,255,.1)", borderBottom: "1px solid rgba(255,255,255,.1)", padding: "4px 0" },
+  moreSummary: { minHeight: 44, display: "flex", alignItems: "center", fontSize: 14, fontWeight: 600, cursor: "pointer" },
+  thumbRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    border: 0,
+    background: "#fff",
+    color: "#0f0f0f",
+    display: "grid",
+    placeItems: "center",
     cursor: "pointer",
   },
   checkRow: { display: "flex", alignItems: "center", gap: 10, minHeight: 40, fontSize: 14.5, color: "rgba(255,255,255,.85)" },

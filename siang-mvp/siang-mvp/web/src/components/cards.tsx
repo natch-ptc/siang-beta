@@ -8,12 +8,30 @@ import styles from "./app.module.css";
 // The cards the tabs and profiles are built from. No state of their own, so
 // they render on the server or inside a client screen alike.
 
-export function Avatar({ artist, size }: { artist: Pick<Artist, "avatarUrl" | "cardBg">; size: number }) {
-  return artist.avatarUrl ? (
+// A profile photo, or the mark Siang generates for an artist without one:
+// their first letter on a colour drawn from their handle, so it is always
+// the same for them.
+export function Avatar({ artist, size }: { artist: Pick<Artist, "avatarUrl" | "name" | "slug">; size: number }) {
+  if (artist.avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element
-    <img className={styles.avatar} src={artist.avatarUrl} alt="" width={size} height={size} style={{ width: size, height: size }} />
-  ) : (
-    <span className={styles.avatar} style={{ width: size, height: size, background: artist.cardBg }} />
+    return <img className={styles.avatar} src={artist.avatarUrl} alt="" width={size} height={size} style={{ width: size, height: size }} />;
+  }
+  let hash = 0;
+  for (const ch of artist.slug) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const hue = hash % 360;
+  return (
+    <span
+      className={styles.mark}
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.44,
+        background: "linear-gradient(150deg, hsl(" + hue + " 58% 46%), hsl(" + ((hue + 40) % 360) + " 62% 30%))",
+      }}
+    >
+      {[...artist.name.trim()][0]?.toUpperCase() ?? ""}
+    </span>
   );
 }
 

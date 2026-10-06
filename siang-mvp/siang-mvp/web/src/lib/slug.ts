@@ -16,13 +16,14 @@ const RESERVED = new Set([
 ]);
 
 export const SLUG_MIN = 3;
-export const SLUG_MAX = 40;
+export const SLUG_MAX = 30;
 
 // Returns what's wrong with a proposed slug, or null when it can be used.
 export function slugProblem(slug: string): string | null {
   if (slug.length < SLUG_MIN) return `Use at least ${SLUG_MIN} characters.`;
   if (slug.length > SLUG_MAX) return `Keep it under ${SLUG_MAX} characters.`;
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return "Use English letters, numbers and single dashes (like anong-ceramics).";
+  if (!/[a-z]/.test(slug)) return "Use at least one letter.";
   if (RESERVED.has(slug) || slug.startsWith("beta-")) return "That link is used by Siang itself. Try another.";
   return null;
 }

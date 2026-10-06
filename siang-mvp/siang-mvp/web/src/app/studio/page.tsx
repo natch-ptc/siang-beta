@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { SHOW_V3_COLUMNS, WORK_V3_COLUMNS, withV3Fallback } from "@/lib/queries";
+import { artistColumns, showColumns, withFallback, workColumns } from "@/lib/queries";
 import StudioClient, { type StudioArtist, type StudioArtwork, type StudioContact, type StudioExhibition, type StudioLink } from "@/components/StudioClient";
-
-type Result<T> = PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>;
 
 export default async function StudioPage() {
   const supabase = await createClient();
@@ -13,38 +11,30 @@ export default async function StudioPage() {
 
   if (!userId) redirect("/login");
 
-  const { data: artist } = await supabase
-    .from("artists")
-    .select("id, slug, name, discipline, based, country, lat, lng, bio, avatar_url, card_bg, card_ink, card_tint, joined_at, joined_tz")
-    .eq("user_id", userId)
-    .maybeSingle<StudioArtist>();
+  // Reads ask for the newest migration's columns and step back to older sets
+  // on a database where it hasn't been run yet (see lib/queries.ts).
+  const artist = await withFallback<StudioArtist>((level) => supabase.from("artists").select(artistColumns(level)).eq("user_id", userId).maybeSingle());
 
   let works: StudioArtwork[] = [];
   let contacts: StudioContact[] = [];
   let shows: StudioExhibition[] = [];
   let links: StudioLink[] = [];
   if (artist) {
-    // Works and shows ask for the v3 columns and fall back to the older ones
-    // on a database where migration 0015 hasn't been run yet.
     const [worksData, contactsRes, showsData, linksRes] = await Promise.all([
-      withV3Fallback<StudioArtwork[]>(
-        (v3) =>
-          supabase
-            .from("artworks")
-            .select(
-              `id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order, created_at${v3 ? ", " + WORK_V3_COLUMNS : ""}`
-            )
-            .eq("artist_id", artist.id)
-            .order("sort_order") as unknown as Result<StudioArtwork[]>
+      withFallback<StudioArtwork[]>((level) =>
+        supabase
+          .from("artworks")
+          .select(workColumns(level) + ", artwork_blocks(id, type, media_url, sort_order)")
+          .eq("artist_id", artist.id)
+          .order("sort_order")
       ),
       supabase.from("artist_contacts").select("kind, value").eq("artist_id", artist.id),
-      withV3Fallback<StudioExhibition[]>(
-        (v3) =>
-          supabase
-            .from("exhibitions")
-            .select(`id, slug, title, kind, year, venue, cover_url${v3 ? ", " + SHOW_V3_COLUMNS : ""}, exhibition_artworks(artwork_id)`)
-            .eq("artist_id", artist.id)
-            .order("year", { ascending: false }) as unknown as Result<StudioExhibition[]>
+      withFallback<StudioExhibition[]>((level) =>
+        supabase
+          .from("exhibitions")
+          .select(showColumns(level) + ", exhibition_artworks(artwork_id)")
+          .eq("artist_id", artist.id)
+          .order("year", { ascending: false })
       ),
       supabase.from("artist_links").select("id, label, url, sort_order").eq("artist_id", artist.id).order("sort_order"),
     ]);

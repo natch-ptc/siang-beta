@@ -180,6 +180,15 @@
   object-fit: cover;
   background: var(--surface-hi) center/cover no-repeat;
 }
+.mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 500;
+  line-height: 1;
+}
 .byText {
   min-width: 0;
   display: flex;

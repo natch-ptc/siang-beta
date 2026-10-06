@@ -1,6 +1,38 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { demoSound } from "./demo-sounds";
-import type { Artist, ArtistLink, Contact, Show, Work } from "./types";
+import type { Artist, ArtistLink, Availability, Contact, Show, Work } from "./types";
+
+type WorkRow = {
+  id: string;
+  slug: string;
+  code: string;
+  title: string;
+  duration_sec: number | null;
+  description: string | null;
+  cover_url: string | null;
+  audio_url: string | null;
+  listen_count: number;
+  sort_order: number;
+  created_at: string;
+  // 0015
+  year?: number | null;
+  medium?: string | null;
+  height_cm?: number | null;
+  width_cm?: number | null;
+  depth_cm?: number | null;
+  // 0016
+  title_en?: string | null;
+  size_text?: string | null;
+  materials?: string | null;
+  edition?: string | null;
+  credits?: string | null;
+  price?: string | null;
+  availability?: Availability | null;
+  location_now?: string | null;
+  status?: "published" | "taken_down" | "removed";
+  exhibition_artworks: { exhibition_id: string }[];
+  artwork_blocks: { type: string; media_url: string | null; sort_order: number }[];
+};
 
 type Row = {
   id: string;
@@ -18,6 +50,9 @@ type Row = {
   avatar_url: string | null;
   joined_at: string | null;
   joined_tz: string | null;
+  statement?: string | null;
+  shop_url?: string | null;
+  hidden?: boolean;
   artist_contacts: { kind: Contact["kind"]; value: string }[];
   artist_links: (ArtistLink & { sort_order: number })[];
   exhibitions: {
@@ -36,52 +71,46 @@ type Row = {
     hours?: string | null;
     entry?: string | null;
   }[];
-  artworks: {
-    id: string;
-    slug: string;
-    code: string;
-    title: string;
-    duration_sec: number | null;
-    description: string | null;
-    cover_url: string | null;
-    audio_url: string | null;
-    listen_count: number;
-    sort_order: number;
-    created_at: string;
-    year?: number | null;
-    medium?: string | null;
-    height_cm?: number | null;
-    width_cm?: number | null;
-    depth_cm?: number | null;
-    exhibition_artworks: { exhibition_id: string }[];
-  }[];
+  artworks: WorkRow[];
 };
 
-// The columns added by supabase/migrations/0015_v3_fields.sql. Reads ask for
-// them first and fall back to the older columns when the database doesn't
-// have them yet, so the site stays up if the code is deployed before the
-// migration is run.
-export const WORK_V3_COLUMNS = "year, medium, height_cm, width_cm, depth_cm";
-export const SHOW_V3_COLUMNS = "starts_on, ends_on, city, hours, entry";
+// Reads ask for the columns of the newest migration first and step back to
+// older sets when the database doesn't have them yet, so the site stays up if
+// the code is deployed before a migration is run. Level 1 adds
+// 0015_v3_fields.sql, level 2 adds 0016_beta_checklist.sql.
+export type Level = 0 | 1 | 2;
 const UNDEFINED_COLUMN = "42703";
 
-export async function withV3Fallback<T>(
-  run: (v3: boolean) => PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>
-): Promise<T | null> {
-  let res = await run(true);
-  if (res.error?.code === UNDEFINED_COLUMN) res = await run(false);
-  if (res.error) throw new Error(res.error.message);
-  return res.data;
+export const workColumns = (level: Level) =>
+  "id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order, created_at" +
+  (level >= 1 ? ", year, medium, height_cm, width_cm, depth_cm" : "") +
+  (level >= 2 ? ", title_en, size_text, materials, edition, credits, price, availability, location_now, status, view_count" : "");
+
+export const showColumns = (level: Level) =>
+  "id, slug, title, kind, year, venue, cover_url" + (level >= 1 ? ", starts_on, ends_on, city, hours, entry" : "");
+
+export const artistColumns = (level: Level) =>
+  "id, slug, name, discipline, based, country, lat, lng, bio, avatar_url, card_bg, card_ink, card_tint, joined_at, joined_tz" +
+  (level >= 2 ? ", statement, shop_url, view_count, slug_changed_at, hidden" : "");
+
+type Result<T> = PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>;
+
+export async function withFallback<T>(run: (level: Level) => unknown): Promise<T | null> {
+  for (const level of [2, 1, 0] as Level[]) {
+    const res = await (run(level) as Result<T>);
+    if (res.error?.code === UNDEFINED_COLUMN && level > 0) continue;
+    if (res.error) throw new Error(res.error.message);
+    return res.data;
+  }
+  return null;
 }
 
-const artistSelect = (v3: boolean) => `
-  id, user_id, slug, name, discipline, based, country, lat, lng, bio, card_bg, card_ink, avatar_url, joined_at, joined_tz,
+const artistSelect = (level: Level) => `
+  user_id, ${artistColumns(level)},
   artist_contacts ( kind, value ),
   artist_links ( label, url, sort_order ),
-  exhibitions ( id, slug, title, kind, year, venue, lat, lng, cover_url${v3 ? ", " + SHOW_V3_COLUMNS : ""} ),
-  artworks ( id, slug, code, title, duration_sec, description, cover_url, audio_url, listen_count, sort_order, created_at${
-    v3 ? ", " + WORK_V3_COLUMNS : ""
-  }, exhibition_artworks ( exhibition_id ) )
+  exhibitions ( lat, lng, ${showColumns(level)} ),
+  artworks ( ${workColumns(level)}, exhibition_artworks ( exhibition_id ), artwork_blocks ( type, media_url, sort_order ) )
 `;
 
 // "examples" are the seeded demo artists (no account owns them); "registered"
@@ -89,26 +118,25 @@ const artistSelect = (v3: boolean) => `
 export type ArtistSet = "examples" | "registered";
 
 export async function fetchArtists(supabase: SupabaseClient, set: ArtistSet): Promise<Artist[]> {
-  const rows = await withV3Fallback<Row[]>((v3) => {
-    const query = supabase.from("artists").select(artistSelect(v3)).order("name");
-    return (set === "examples" ? query.is("user_id", null) : query.not("user_id", "is", null)) as unknown as PromiseLike<{
-      data: Row[] | null;
-      error: { code?: string; message: string } | null;
-    }>;
+  const rows = await withFallback<Row[]>((level) => {
+    const query = supabase.from("artists").select(artistSelect(level)).order("name");
+    return set === "examples" ? query.is("user_id", null) : query.not("user_id", "is", null);
   });
-  return (rows ?? []).map(rowToArtist);
+  return (rows ?? []).filter((row) => !row.hidden).map(rowToArtist);
 }
 
-// One artist for their public page (siang.co/<slug>).
+// One artist for their public page (siang.co/<slug>). A handle that was
+// changed still finds its artist: callers compare `artist.slug` with the
+// address they were asked for and redirect to the new one.
 export async function fetchArtistBySlug(supabase: SupabaseClient, slug: string): Promise<Artist | null> {
-  const row = await withV3Fallback<Row>(
-    (v3) =>
-      supabase.from("artists").select(artistSelect(v3)).eq("slug", slug).maybeSingle() as unknown as PromiseLike<{
-        data: Row | null;
-        error: { code?: string; message: string } | null;
-      }>
-  );
-  return row ? rowToArtist(row) : null;
+  let row = await withFallback<Row>((level) => supabase.from("artists").select(artistSelect(level)).eq("slug", slug).maybeSingle());
+  if (!row) {
+    // previous_slug arrives with migration 0016; before it, there is nothing to look up.
+    const moved = await supabase.from("artists").select("slug").eq("previous_slug", slug).limit(1).maybeSingle<{ slug: string }>();
+    const now = moved.data?.slug;
+    if (now) row = await withFallback<Row>((level) => supabase.from("artists").select(artistSelect(level)).eq("slug", now).maybeSingle());
+  }
+  return row && !row.hidden ? rowToArtist(row) : null;
 }
 
 // The signed-in visitor's own artist page, if they have made one. `signedIn`
@@ -122,6 +150,8 @@ export async function fetchOwnSlug(supabase: SupabaseClient): Promise<{ signedIn
 }
 
 // Where a six-digit work code leads (siang.co/w/123456): the work's own page.
+// A work that was taken down still has an address (a simple page), so its
+// printed code never ends in an error.
 export async function findWorkPathByCode(supabase: SupabaseClient, code: string): Promise<string | null> {
   const { data, error } = await supabase.from("artworks").select("slug, artists ( slug )").eq("code", code).maybeSingle();
   if (error) throw new Error(error.message);
@@ -144,18 +174,24 @@ function cityFromVenue(venue: string | null) {
 
 function rowToArtist(row: Row): Artist {
   const artworks = [...row.artworks].sort((a, b) => a.sort_order - b.sort_order);
+  const live = artworks.filter((w) => (w.status ?? "published") === "published");
   const slugByShowId = new Map(row.exhibitions.map((sh) => [sh.id, sh.slug] as const));
 
   // Only the seeded demo artists (no account owns them) borrow an example sound.
   const example = row.user_id ? null : demoSound(row.slug);
 
-  const works: Work[] = artworks.map((w) => ({
+  const works: Work[] = live.map((w) => ({
     id: w.slug,
     dbId: w.id,
     code: w.code,
     title: w.title,
+    titleEn: w.title_en ?? "",
     description: w.description ?? "",
     coverUrl: w.cover_url,
+    images: [...(w.artwork_blocks ?? [])]
+      .filter((b) => b.type === "image" && b.media_url)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((b) => b.media_url!),
     audioUrl: w.audio_url ?? example?.url ?? null,
     soundCredit: w.audio_url ? null : example?.credit ?? null,
     durationSec: w.audio_url ? w.duration_sec ?? 0 : example?.seconds ?? 0,
@@ -163,9 +199,16 @@ function rowToArtist(row: Row): Artist {
     createdAt: w.created_at,
     year: w.year ?? null,
     medium: w.medium ?? "",
+    sizeText: w.size_text ?? "",
     heightCm: w.height_cm ?? null,
     widthCm: w.width_cm ?? null,
     depthCm: w.depth_cm ?? null,
+    materials: w.materials ?? "",
+    edition: w.edition ?? "",
+    credits: w.credits ?? "",
+    price: w.price ?? "",
+    availability: w.availability ?? null,
+    locationNow: w.location_now ?? "",
     showSlugs: w.exhibition_artworks.map((x) => slugByShowId.get(x.exhibition_id)).filter((s): s is string => !!s),
   }));
 
@@ -198,6 +241,8 @@ function rowToArtist(row: Row): Artist {
     country: row.country ?? "",
     geo: geoQuery(row.lat, row.lng, [row.based, row.country].filter(Boolean).join(", ")),
     bio: row.bio ?? "",
+    statement: row.statement ?? "",
+    shopUrl: row.shop_url ?? "",
     avatarUrl: row.avatar_url,
     cardBg: row.card_bg ?? "#000000",
     cardInk: row.card_ink ?? "#ffffff",
@@ -207,6 +252,7 @@ function rowToArtist(row: Row): Artist {
     contacts: row.artist_contacts.map((c) => ({ kind: c.kind, value: c.value })),
     links: [...row.artist_links].sort((a, b) => a.sort_order - b.sort_order).map(({ label, url }) => ({ label, url })),
     works,
+    takenDown: artworks.filter((w) => (w.status ?? "published") !== "published").map((w) => ({ id: w.slug, title: w.title })),
     shows,
   };
 }
