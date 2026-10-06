@@ -13,21 +13,27 @@ const TABS = [
   { path: "/artists", label: "Hot Artist!", icon: NAV_ARTISTS },
 ];
 
-// `base` is "/demo" inside the demo, where the tabs list the example artists.
-export default function TabBar({ base = "" }: { base?: string }) {
+// Pages that are not part of the app: the marketing pages, sign in, the code keypad.
+const HIDDEN = ["/about", "/join-beta", "/claim-your-link", "/login", "/w"];
+
+// Lives in the root layout, so it stays still while pages change under it.
+// Inside the demo (/demo/...) the tabs list the example artists.
+export default function TabBar() {
   const pathname = usePathname();
-  const tabs = [...TABS.map((t) => ({ ...t, href: base + t.path || "/" })), { href: "/me", label: "Profile", icon: NAV_PROFILE }];
+  if (HIDDEN.some((p) => pathname === p || pathname.startsWith(p + "/"))) return null;
+  const base = pathname === "/demo" || pathname.startsWith("/demo/") ? "/demo" : "";
+  const tabs = [
+    ...TABS.map((t) => ({ ...t, href: base + t.path || "/", on: pathname === (base + t.path || "/") })),
+    { href: "/me", label: "Profile", icon: NAV_PROFILE, on: pathname === "/me" || pathname === "/studio" },
+  ];
   return (
-    <nav className={styles.tabbar} aria-label="Siang">
-      {tabs.map((t) => {
-        const on = pathname === t.href;
-        return (
-          <Link key={t.href} href={t.href} className={`${styles.tab} ${on ? styles.tabOn : ""}`} aria-current={on ? "page" : undefined}>
-            {t.icon}
-            <span>{t.label}</span>
-          </Link>
-        );
-      })}
+    <nav className={styles.tabbar} aria-label="Siang" style={{ viewTransitionName: "tab-bar" }}>
+      {tabs.map((t) => (
+        <Link key={t.href} href={t.href} className={`${styles.tab} ${t.on ? styles.tabOn : ""}`} aria-current={t.on ? "page" : undefined}>
+          {t.icon}
+          <span>{t.label}</span>
+        </Link>
+      ))}
     </nav>
   );
 }

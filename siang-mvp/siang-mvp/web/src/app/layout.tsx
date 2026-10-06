@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import TabBar from "@/components/TabBar";
 import "./globals.css";
 
 // What link previews (LINE, Facebook, Messenger…) show for siang.co. Artist,
@@ -29,7 +30,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <TabBar />
+      </body>
     </html>
   );
 }

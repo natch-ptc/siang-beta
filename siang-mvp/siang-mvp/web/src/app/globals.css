@@ -92,3 +92,70 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Page transitions (React <ViewTransition>, see components/PageTransition.tsx) ──
+   Tab switches crossfade; going into a work or a show slides forward, closing
+   it slides back; a work's picture morphs from its card into the page. The
+   tab bar stays put throughout. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(.page-fade) {
+  animation: 120ms ease-in both vt-fade reverse;
+}
+::view-transition-new(.page-fade) {
+  animation: 200ms ease-out 60ms both vt-fade, 320ms var(--ease) both vt-rise;
+}
+::view-transition-old(.nav-forward) {
+  --vt-offset: -48px;
+  animation: 140ms ease-in both vt-fade reverse, 360ms var(--ease) both vt-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --vt-offset: 48px;
+  animation: 200ms ease-out 120ms both vt-fade, 360ms var(--ease) both vt-slide;
+}
+::view-transition-old(.nav-back) {
+  --vt-offset: 48px;
+  animation: 140ms ease-in both vt-fade reverse, 360ms var(--ease) both vt-slide reverse;
+}
+::view-transition-new(.nav-back) {
+  --vt-offset: -48px;
+  animation: 200ms ease-out 120ms both vt-fade, 360ms var(--ease) both vt-slide;
+}
+::view-transition-group(.morph) {
+  animation-duration: 380ms;
+  animation-timing-function: var(--ease);
+}
+::view-transition-image-pair(.morph) {
+  animation-name: vt-blur;
+}
+::view-transition-group(tab-bar) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(tab-bar) {
+  display: none;
+}
+::view-transition-new(tab-bar) {
+  animation: none;
+}
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-rise {
+  from {
+    transform: translateY(8px);
+  }
+}
+@keyframes vt-slide {
+  from {
+    translate: var(--vt-offset);
+  }
+}
+@keyframes vt-blur {
+  30% {
+    filter: blur(3px);
+  }
+}

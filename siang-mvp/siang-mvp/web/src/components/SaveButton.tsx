@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { stampSeen, useDeviceList } from "@/lib/device";
 import { SAVED_ICON, SAVE_ICON } from "@/lib/icons";
 import styles from "./Sheet.module.css";
@@ -22,13 +22,11 @@ export default function SaveButton({ path }: { path: string }) {
 // with ?seen=1) is stamped into Seen with the date, then the mark is taken
 // off the address so a link shared from here doesn't stamp anyone else.
 export function SeenStamp({ path, today }: { path: string; today: string }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const seen = useSearchParams().get("seen");
   useEffect(() => {
     if (!seen) return;
     stampSeen(path, today);
-    router.replace(pathname, { scroll: false });
-  }, [seen, path, today, pathname, router]);
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+  }, [seen, path, today]);
   return null;
 }

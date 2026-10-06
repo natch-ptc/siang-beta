@@ -8,6 +8,7 @@ import SaveButton, { SeenStamp } from "@/components/SaveButton";
 import ScaleFigure from "@/components/ScaleFigure";
 import ShareButton from "@/components/ShareButton";
 import ViewBeacon from "@/components/ViewBeacon";
+import PageTransition, { BACK, Morph } from "@/components/PageTransition";
 import WavePlayer from "@/components/WavePlayer";
 import { loadArtist, loadOwnSlug } from "@/lib/load";
 import { todayInThailand } from "@/lib/format";
@@ -51,14 +52,14 @@ const AVAILABILITY: Record<Availability, string> = { available: "Available", sol
 function Header({ artist }: { artist: Artist }) {
   return (
     <header className={styles.head}>
-      <Link href={`/${artist.slug}`} className={styles.who}>
+      <Link href={`/${artist.slug}`} className={styles.who} transitionTypes={BACK}>
         <Avatar artist={artist} size={52} />
         <span className={styles.whoText}>
           <span className={styles.whoName}>{artist.name}</span>
           <span className={styles.whoHandle}>@{artist.slug}</span>
         </span>
       </Link>
-      <Link href={`/${artist.slug}`} className={styles.close} aria-label={`Close, and go to ${artist.name}'s page`}>
+      <Link href={`/${artist.slug}`} className={styles.close} transitionTypes={BACK} aria-label={`Close, and go to ${artist.name}'s page`}>
         {CLOSE_BIG}
       </Link>
     </header>
@@ -79,7 +80,8 @@ export default async function WorkPage({ params }: Props) {
   if (!work) {
     if (!found.takenDown) notFound();
     return (
-      <main className={`${app.app} ${app.appBare}`}>
+      <main className={app.app}>
+        <PageTransition>
         <article className={styles.page}>
           <Header artist={artist} />
           <h1 className={styles.title}>{found.takenDown.title}</h1>
@@ -92,6 +94,7 @@ export default async function WorkPage({ params }: Props) {
             </div>
           </section>
         </article>
+        </PageTransition>
       </main>
     );
   }
@@ -118,19 +121,22 @@ export default async function WorkPage({ params }: Props) {
   ];
 
   return (
-    <main className={`${app.app} ${app.appBare}`}>
+    <main className={app.app}>
       <Suspense>
         <SeenStamp path={path} today={today} />
       </Suspense>
       {!own && <ViewBeacon kind="artwork" id={work.dbId} />}
+      <PageTransition>
       <article className={styles.page}>
         <Header artist={artist} />
 
         <h1 className={styles.title}>{work.title}</h1>
         {work.titleEn && <p className={styles.sub}>{work.titleEn}</p>}
         {work.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className={styles.art} src={work.coverUrl} alt={work.title} />
+          <Morph name={`work-${work.dbId}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={styles.art} src={work.coverUrl} alt={work.title} />
+          </Morph>
         ) : (
           <div className={`${styles.art} ${styles.artBlank}`} style={{ background: artist.cardBg }} />
         )}
@@ -188,20 +194,11 @@ export default async function WorkPage({ params }: Props) {
           </section>
         )}
 
-        <section className={styles.section}>
-          <div className={styles.cta}>
-            <Link href="/" className={app.btnGhost}>
-              Explore Siang
-            </Link>
-            <Link href="/login?mode=signup" className={app.btn}>
-              Create your profile
-            </Link>
-          </div>
-        </section>
         <div className={styles.foot}>
           <ReportButton />
         </div>
       </article>
+      </PageTransition>
     </main>
   );
 }

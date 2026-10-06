@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Avatar, Picture, showCover, workTrack } from "@/components/cards";
 import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
+import PageTransition, { BACK, FORWARD } from "@/components/PageTransition";
 import SoundBadge from "@/components/SoundBadge";
 import { loadArtist } from "@/lib/load";
 import { clock, daysLeft, showTiming, showWhenText, todayInThailand } from "@/lib/format";
@@ -59,17 +60,18 @@ export default async function ShowPage({ params }: Props) {
   const when = showWhenText(show);
 
   return (
-    <main className={`${app.app} ${app.appBare}`}>
+    <main className={app.app}>
+      <PageTransition>
       <article className={styles.page}>
         <header className={styles.head}>
-          <Link href={`/${artist.slug}`} className={styles.who}>
+          <Link href={`/${artist.slug}`} className={styles.who} transitionTypes={BACK}>
             <Avatar artist={artist} size={52} />
             <span className={styles.whoText}>
               <span className={styles.whoName}>{artist.name}</span>
               <span className={styles.whoHandle}>@{artist.slug}</span>
             </span>
           </Link>
-          <Link href={`/${artist.slug}`} className={styles.close} aria-label={`Close, and go to ${artist.name}'s page`}>
+          <Link href={`/${artist.slug}`} className={styles.close} transitionTypes={BACK} aria-label={`Close, and go to ${artist.name}'s page`}>
             {CLOSE_BIG}
           </Link>
         </header>
@@ -139,7 +141,7 @@ export default async function ShowPage({ params }: Props) {
                       <b>{w.title}</b>
                       <span>{[artist.name, w.durationSec ? clock(w.durationSec) : ""].filter(Boolean).join(" · ")}</span>
                     </span>
-                    <Link href={`/${artist.slug}/${w.id}`} aria-label={`${i + 1}. ${w.title}`} />
+                    <Link href={`/${artist.slug}/${w.id}`} transitionTypes={FORWARD} aria-label={`${i + 1}. ${w.title}`} />
                     {track && <SoundBadge track={track} title={w.title} />}
                   </div>
                 );
@@ -148,20 +150,11 @@ export default async function ShowPage({ params }: Props) {
           )}
         </section>
 
-        <section className={styles.section}>
-          <div className={styles.cta}>
-            <Link href="/exhibitions" className={app.btnGhost}>
-              More exhibitions
-            </Link>
-            <Link href={`/${artist.slug}`} className={app.btn}>
-              {artist.name}
-            </Link>
-          </div>
-        </section>
         <div className={styles.foot}>
           <ReportButton />
         </div>
       </article>
+      </PageTransition>
     </main>
   );
 }

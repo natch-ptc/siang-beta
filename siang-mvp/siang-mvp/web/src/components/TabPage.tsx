@@ -5,7 +5,7 @@ import type { Artist } from "@/lib/types";
 import ArtistsScreen from "./ArtistsScreen";
 import ExhibitionsScreen from "./ExhibitionsScreen";
 import ExploreScreen from "./ExploreScreen";
-import TabBar from "./TabBar";
+import PageTransition from "./PageTransition";
 import styles from "./app.module.css";
 
 // One of the three tabs, filled with the artists who registered (the live
@@ -24,6 +24,7 @@ export default async function TabPage({ tab, set }: { tab: "art" | "exhibitions"
 
   return (
     <main className={styles.app}>
+      <PageTransition>
       {!artists ? (
         <div className={styles.empty}>
           <h2>Couldn&apos;t load Siang</h2>
@@ -36,7 +37,7 @@ export default async function TabPage({ tab, set }: { tab: "art" | "exhibitions"
       ) : (
         <ArtistsScreen artists={artists} base={base} />
       )}
-      <TabBar base={base} />
+      </PageTransition>
     </main>
   );
 }

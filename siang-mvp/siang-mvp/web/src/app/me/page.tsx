@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import ArtistProfile from "@/components/ArtistProfile";
 import GuestProfile from "@/components/GuestProfile";
-import TabBar from "@/components/TabBar";
+import PageTransition from "@/components/PageTransition";
 import { createClient } from "@/lib/supabase/server";
 import { fetchArtistBySlug, fetchArtists, fetchOwnSlug } from "@/lib/queries";
 import { todayInThailand } from "@/lib/format";
@@ -31,8 +31,9 @@ export default async function ProfileTab() {
 
   return (
     <main className={app.app}>
-      {artist ? <ArtistProfile artist={artist} today={todayInThailand()} own share={artistShare(artist)} /> : <GuestProfile artists={artists} />}
-      <TabBar />
+      <PageTransition>
+        {artist ? <ArtistProfile artist={artist} today={todayInThailand()} own share={artistShare(artist)} /> : <GuestProfile artists={artists} />}
+      </PageTransition>
     </main>
   );
 }

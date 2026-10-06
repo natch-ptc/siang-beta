@@ -7,6 +7,7 @@ import { isCollection, type Artist } from "@/lib/types";
 import AppHeader, { matches } from "./AppHeader";
 import { Avatar, StripTile } from "./cards";
 import FollowButton from "./FollowButton";
+import { FORWARD } from "./PageTransition";
 import styles from "./app.module.css";
 
 type Sort = "hot" | "new" | "legend";
@@ -54,7 +55,7 @@ export default function ArtistsScreen({ artists, base = "" }: { artists: Artist[
           {shown.map((artist) => (
             <section key={artist.slug} aria-label={artist.name}>
               <div className={styles.artistHead}>
-                <Link href={`/${artist.slug}`} className={styles.artistWho}>
+                <Link href={`/${artist.slug}`} className={styles.artistWho} transitionTypes={FORWARD}>
                   <Avatar artist={artist} size={36} />
                   <span className={styles.byText}>
                     <span className={styles.byName}>{artist.name}</span>

@@ -23,6 +23,8 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
   const [mode, setMode] = useState<LoginMode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [instagram, setInstagram] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -36,19 +38,24 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
     const supabase = createClient();
 
     if (mode === "signup") {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      // Name and Instagram ride along on the account, so the Studio's first
+      // onboarding step can fill them in, even after an email confirmation.
+      const ig = instagram.trim().replace(/^@/, "");
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name: name.trim(), instagram: ig } } });
       setBusy(false);
       if (error) {
         setError(friendlyError(error.message, mode));
         if (/already registered/i.test(error.message)) setMode("signin");
         return;
       }
+      // Also on the beta list, like /join-beta. Best effort: an email already on it is fine.
+      void supabase.from("beta_testers").insert({ name: name.trim(), email, handle: ig || null, source: "signup" });
       if (!data.session) {
         setNotice("Check your email to confirm your account, then sign in.");
         setMode("signin");
         return;
       }
-      router.push("/app");
+      router.push("/studio");
       router.refresh();
       return;
     }
@@ -59,7 +66,7 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
       setError(friendlyError(error.message, mode));
       return;
     }
-    router.push("/app");
+    router.push("/studio");
     router.refresh();
   }
 
@@ -80,6 +87,12 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
         </p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
+          {mode === "signup" && (
+            <label style={styles.label}>
+              Your name
+              <input style={styles.input} required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+            </label>
+          )}
           <label style={styles.label}>
             Email
             <input
@@ -113,14 +126,27 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
                 {showPassword ? EYE_SLASH_ICON : EYE_ICON}
               </button>
             </span>
-            {mode === "signup" && <span style={styles.hint}>At least 6 characters.</span>}
+            {mode === "signup" && <span style={styles.hint}>At least 6 characters, so you can sign back in.</span>}
           </label>
+          {mode === "signup" && (
+            <label style={styles.label}>
+              Instagram, optional
+              <input
+                style={styles.input}
+                placeholder="@yourhandle"
+                autoCapitalize="none"
+                autoCorrect="off"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+              />
+            </label>
+          )}
 
           {error && <p style={styles.error}>{error}</p>}
           {notice && <p style={styles.notice}>{notice}</p>}
 
           <button style={styles.submit} type="submit" disabled={busy}>
-            {busy ? "..." : mode === "signin" ? "Sign in" : "Sign up"}
+            {busy ? "..." : mode === "signin" ? "Sign in" : "Continue"}
           </button>
         </form>
 

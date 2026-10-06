@@ -18,8 +18,6 @@ import {
   SkipForward,
   Repeat,
   RepeatOnce,
-  InstagramLogo,
-  ChatCircleDots,
   EnvelopeSimple,
   Globe,
   Camera,
@@ -69,6 +67,7 @@ import {
   Star,
   Backspace,
 } from "@phosphor-icons/react/dist/ssr";
+import { siInstagram, siLine } from "simple-icons";
 
 export const PIN = <MapPin size={13} weight="fill" />;
 export const CHEV = <CaretRight size={14} weight="bold" />;
@@ -164,11 +163,21 @@ export const PLAY_XL = <Play size={28} weight="fill" />;
 export const PAUSE_XL = <Pause size={28} weight="fill" />;
 export const BACKSPACE_ICON = <Backspace size={24} weight="regular" />;
 
-const CONTACT_ICON: Record<string, React.ReactNode> = {
-  ig: <InstagramLogo size={14} weight="regular" />,
-  line: <ChatCircleDots size={14} weight="regular" />,
-  email: <EnvelopeSimple size={14} weight="regular" />,
-  web: <Globe size={14} weight="regular" />,
+// Instagram and LINE use their own logos (Simple Icons, simpleicons.org);
+// email and website use Phosphor's generic glyphs.
+function BrandIcon({ icon, size }: { icon: { path: string; title: string }; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flex: "none" }}>
+      <path d={icon.path} />
+    </svg>
+  );
+}
+
+const CONTACT_ICON: Record<string, (size: number) => React.ReactNode> = {
+  ig: (size) => <BrandIcon icon={siInstagram} size={size} />,
+  line: (size) => <BrandIcon icon={siLine} size={size} />,
+  email: (size) => <EnvelopeSimple size={size} weight="bold" />,
+  web: (size) => <Globe size={size} weight="bold" />,
 };
 
 const CONTACT_LABEL: Record<string, string> = { ig: "Instagram", line: "LINE", email: "Email", web: "Website" };
@@ -180,8 +189,8 @@ const CONTACT_HREF: Record<string, (v: string) => string> = {
   web: (v) => (/^https?:/i.test(v) ? v : "https://" + v),
 };
 
-export function contactIcon(kind: string) {
-  return CONTACT_ICON[kind];
+export function contactIcon(kind: string, size = 16) {
+  return CONTACT_ICON[kind]?.(size);
 }
 export function contactLabel(kind: string) {
   return CONTACT_LABEL[kind] ?? kind;

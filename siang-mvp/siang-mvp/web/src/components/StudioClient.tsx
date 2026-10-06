@@ -30,13 +30,16 @@ import {
   SHOWS_CHIP,
   COLLECTION_CHIP,
   ABOUT_CHIP,
+  contactIcon,
 } from "@/lib/icons";
 import { ART_TYPES } from "@/lib/art-types";
 import { slugify, slugProblem, SLUG_MAX } from "@/lib/slug";
 import { COUNTRIES, findCity, findCountry } from "@/lib/places";
 import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg, photoPosition } from "@/lib/card-cover";
 import type { ShareInfo } from "@/lib/share";
+import { CalendarDots, PaintBrushBroad, UserPlus, Waveform } from "@phosphor-icons/react/dist/ssr";
 import CardFace from "./CardFace";
+import { Mark } from "./Logo";
 import { ShareSheet } from "./ShareButton";
 import Spinner from "./Spinner";
 // The Studio is the artist's profile as visitors see it (ArtistProfile), with
@@ -201,6 +204,9 @@ async function uploadFile(supabase: SupabaseClient, file: File): Promise<string>
 
 export default function StudioClient({
   email,
+  suggestedName,
+  instagram,
+  welcome,
   artist,
   works,
   contacts,
@@ -208,6 +214,9 @@ export default function StudioClient({
   links,
 }: {
   email: string;
+  suggestedName: string; // from sign up, for the first onboarding step
+  instagram: string;
+  welcome: WelcomeStep | null; // the onboarding step to show over the Studio
   artist: StudioArtist | null;
   works: StudioArtwork[];
   contacts: StudioContact[];
@@ -235,14 +244,12 @@ export default function StudioClient({
             {SIGN_OUT_ICON}
           </button>
         </div>
-        <div className={st.body}>
-          <CreateProfile />
-        </div>
+        <CreateProfile suggestedName={suggestedName} instagram={instagram} />
       </main>
     );
   }
 
-  return <ArtistPage artist={artist} works={works} contacts={contacts} shows={shows} links={links} onSignOut={signOut} />;
+  return <ArtistPage artist={artist} works={works} contacts={contacts} shows={shows} links={links} onSignOut={signOut} welcome={welcome} />;
 }
 
 type ContactInputs = { ig: string; line: string; email: string; web: string };
@@ -286,17 +293,82 @@ function ContactFields({ value, onChange }: { value: ContactInputs; onChange: (v
   );
 }
 
-function CreateProfile() {
+// ── Onboarding ─────────────────────────────────────────────────────────────
+// After sign up (name, email, Instagram on /login), an artist goes through:
+// 1. their link, siang.co/<handle> (required), then three steps they can
+// skip: 2. profile details, 3. their first work with its sound, 4. an
+// exhibition. The four steps follow the Draft-1 "Create your artist profile"
+// cards. Steps 2 to 4 run over the Studio, from /studio?welcome=profile.
+
+export type WelcomeStep = "profile" | "work" | "show" | "done";
+
+const STEPS = [
+  { id: "link", label: "Profile", icon: <UserPlus size={20} weight="bold" /> },
+  { id: "work", label: "Art & sound", icon: <PaintBrushBroad size={20} weight="bold" /> },
+  { id: "show", label: "Exhibition", icon: <CalendarDots size={20} weight="bold" /> },
+  { id: "done", label: "Your Siang", icon: <Waveform size={20} weight="bold" /> },
+] as const;
+
+// Which of the four steps is current: link and profile are both "Profile".
+function StepDots({ at }: { at: "link" | WelcomeStep }) {
+  const current = at === "profile" ? "link" : at;
+  const index = STEPS.findIndex((s) => s.id === current);
+  return (
+    <ol style={styles.steps} aria-label={`Step ${index + 1} of ${STEPS.length}`}>
+      {STEPS.map((s, i) => (
+        <li key={s.id} style={{ ...styles.step, opacity: i <= index ? 1 : 0.38 }} aria-current={i === index ? "step" : undefined}>
+          <span style={{ ...styles.stepIcon, ...(i === index ? styles.stepIconOn : null) }}>{s.icon}</span>
+          <span>{s.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function OnboardingFrame({
+  at,
+  title,
+  lead,
+  onSkip,
+  children,
+}: {
+  at: "link" | WelcomeStep;
+  title: string;
+  lead: string;
+  onSkip?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={styles.onboarding} role="dialog" aria-modal="true" aria-label={title}>
+      <div style={styles.onboardingTop}>
+        <Mark height={20} />
+        {onSkip ? (
+          <button style={styles.skip} onClick={onSkip} type="button">
+            Skip
+          </button>
+        ) : (
+          <span />
+        )}
+      </div>
+      <div style={styles.onboardingBody}>
+        <StepDots at={at} />
+        <h1 style={styles.onboardingTitle}>{title}</h1>
+        <p style={styles.onboardingLead}>{lead}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Step 1: the artist's name and link. The only step that can't be skipped,
+// because everything else hangs off the profile it creates.
+function CreateProfile({ suggestedName, instagram }: { suggestedName: string; instagram: string }) {
   const router = useRouter();
   const supabase = createClient();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(suggestedName);
   // Follows the name until the artist types their own link (a Thai name has no Latin slug to suggest).
-  const [slug, setSlug] = useState("");
+  const [slug, setSlug] = useState(slugify(suggestedName).slice(0, SLUG_MAX));
   const [slugTouched, setSlugTouched] = useState(false);
-  const [discipline, setDiscipline] = useState("");
-  const [place, setPlace] = useState<Place>({ based: "", country: "Thailand", lat: null, lng: null });
-  const [bio, setBio] = useState("");
-  const [contact, setContact] = useState<ContactInputs>({ ig: "", line: "", email: "", web: "" });
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -304,18 +376,13 @@ function CreateProfile() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!name.trim()) {
+      setError("Add the name people know your work by.");
+      return;
+    }
     const problem = slugProblem(slug);
     if (problem) {
       setError(`Your link: ${problem}`);
-      return;
-    }
-    if (!place.based.trim()) {
-      setError("Add the city you work in.");
-      return;
-    }
-    const contacts = parseContacts(contact);
-    if (typeof contacts === "string") {
-      setError(contacts);
       return;
     }
     if (!rights) {
@@ -323,7 +390,6 @@ function CreateProfile() {
       return;
     }
     setBusy(true);
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -332,17 +398,10 @@ function CreateProfile() {
       setBusy(false);
       return;
     }
-
     const row = {
       user_id: user.id,
       slug,
       name: name.trim(),
-      discipline: discipline || null,
-      based: place.based.trim() || null,
-      country: place.country.trim() || null,
-      lat: place.lat,
-      lng: place.lng,
-      bio: bio.trim() || null,
       ...PLAIN_CARD,
       joined_tz: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
     };
@@ -354,23 +413,20 @@ function CreateProfile() {
       setError(res.error ? slugTakenMessage(res.error.message, res.error.code) : "Could not create the profile.");
       return;
     }
-    const artistId = res.data.id;
-    await supabase.from("artist_contacts").insert(contacts.filter(([, v]) => v).map(([kind, value]) => ({ artist_id: artistId, kind, value })));
-
-    setBusy(false);
+    const ig = instagram.trim().replace(/^@/, "");
+    if (ig) await supabase.from("artist_contacts").insert({ artist_id: res.data.id, kind: "ig", value: ig });
+    router.replace("/studio?welcome=profile");
     router.refresh();
   }
 
   return (
-    <section style={styles.darkCard}>
-      <h1 style={styles.h1}>Create your artist profile</h1>
-      <p style={styles.sub}>This becomes your public page on Siang. You can add a photo right after.</p>
-      <form onSubmit={submit} style={styles.form}>
-        <Field label="Name">
+    <OnboardingFrame at="link" title="Your Siang link" lead="This is where people find you, and what your QR codes open.">
+      <form onSubmit={submit} style={{ ...styles.form, marginTop: 22 }}>
+        <Field label="Artist name">
           <input
             style={styles.input}
-            required
             value={name}
+            autoFocus
             onChange={(e) => {
               setName(e.target.value);
               if (!slugTouched) setSlug(slugify(e.target.value).slice(0, SLUG_MAX));
@@ -384,18 +440,7 @@ function CreateProfile() {
             setSlug(v);
           }}
         />
-        <p style={{ ...styles.hint, marginTop: -6 }}>
-          Your page and QR codes use this address. 3 to 30 English letters, numbers and dashes. You can change it once.
-        </p>
-        <ArtTypeField value={discipline} onChange={setDiscipline} required />
-        <PlacePicker value={place} onChange={setPlace} />
-        <label style={styles.label}>
-          <span style={{ display: "flex", justifyContent: "space-between" }}>
-            Short bio, optional <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
-          </span>
-          <textarea style={styles.textarea} value={bio} maxLength={BIO_LIMIT} onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))} rows={3} />
-        </label>
-        <ContactFields value={contact} onChange={setContact} />
+        <p style={{ ...styles.hint, marginTop: -6 }}>3 to 30 English letters, numbers and dashes. You can change it once later.</p>
         <label style={styles.checkRow}>
           <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} />
           <span>I own or have the rights to what I upload.</span>
@@ -407,11 +452,128 @@ function CreateProfile() {
               <Spinner /> Creating…
             </>
           ) : (
-            "Create profile"
+            "Continue"
           )}
         </button>
       </form>
-    </section>
+    </OnboardingFrame>
+  );
+}
+
+// Step 2: photo, art type, city and a short bio. Everything here can be
+// skipped and filled in later from Edit Profile.
+function WelcomeProfile({ artist, onNext }: { artist: StudioArtist; onNext: () => void }) {
+  const router = useRouter();
+  const supabase = createClient();
+  const photoRef = useRef<HTMLInputElement>(null);
+  const [avatar, setAvatar] = useState(artist.avatar_url);
+  const [uploading, setUploading] = useState(false);
+  const [discipline, setDiscipline] = useState(artist.discipline ?? "");
+  const [place, setPlace] = useState<Place>({ based: artist.based ?? "", country: artist.country ?? "Thailand", lat: artist.lat, lng: artist.lng });
+  const [bio, setBio] = useState(artist.bio ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function changePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const url = await uploadFile(supabase, file);
+      const { error } = await supabase.from("artists").update({ avatar_url: url }).eq("id", artist.id);
+      if (error) throw error;
+      setAvatar(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not upload the photo.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase
+      .from("artists")
+      .update({
+        discipline: discipline || null,
+        based: place.based.trim() || null,
+        country: place.country.trim() || null,
+        lat: place.lat,
+        lng: place.lng,
+        bio: bio.trim() || null,
+      })
+      .eq("id", artist.id);
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    router.refresh();
+    onNext();
+  }
+
+  return (
+    <OnboardingFrame at="profile" title="Create your profile" lead="A photo, what you make and where. You can skip this and add it later." onSkip={onNext}>
+      <div style={{ ...styles.form, marginTop: 22 }}>
+        <button
+          style={{ ...styles.avatarPick, backgroundImage: avatar ? `url("${avatar}")` : undefined }}
+          onClick={() => photoRef.current?.click()}
+          disabled={uploading}
+          aria-label={avatar ? "Change your photo" : "Add a photo"}
+          type="button"
+        >
+          {uploading ? <Spinner size={22} label="Uploading photo" /> : !avatar && CAMERA_ICON}
+        </button>
+        <input ref={photoRef} type="file" accept="image/*" hidden onChange={changePhoto} />
+        <ArtTypeField value={discipline} onChange={setDiscipline} />
+        <PlacePicker value={place} onChange={setPlace} />
+        <label style={styles.label}>
+          <span style={{ display: "flex", justifyContent: "space-between" }}>
+            Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
+          </span>
+          <textarea style={styles.textarea} rows={3} maxLength={BIO_LIMIT} value={bio} onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))} />
+        </label>
+        {error && <p style={styles.error}>{error}</p>}
+        <button style={styles.submit} onClick={save} disabled={busy || uploading} type="button">
+          {busy ? <Spinner /> : null} Continue
+        </button>
+      </div>
+    </OnboardingFrame>
+  );
+}
+
+// Step 4: the link and the QR, ready to share.
+function WelcomeDone({ artist, onFinish }: { artist: StudioArtist; onFinish: () => void }) {
+  const [sharing, setSharing] = useState(false);
+  const info: ShareInfo = {
+    title: artist.name,
+    subtitle: `@${artist.slug}`,
+    meta: [artist.based, artist.country].filter(Boolean).join(", "),
+    url: `https://siang.co/${artist.slug}`,
+    qrUrl: `https://siang.co/${artist.slug}`,
+    code: null,
+    hint: "Scan to see the artist",
+    file: `siang-${artist.slug}`,
+  };
+  return (
+    <OnboardingFrame at="done" title="Your Siang is ready" lead="Share the link, or print the QR and put it next to your work.">
+      <p style={styles.linkPreview}>siang.co/{artist.slug}</p>
+      <div style={{ ...styles.form, marginTop: 18 }}>
+        <button style={styles.submit} onClick={() => setSharing(true)} type="button">
+          {SHARE_GLYPH} Share your link and QR
+        </button>
+        <Link href={`/${artist.slug}`} style={styles.ghostWide}>
+          See your page
+        </Link>
+        <button style={styles.ghostWide} onClick={onFinish} type="button">
+          Go to your studio
+        </button>
+      </div>
+      {sharing && <ShareSheet info={info} onClose={() => setSharing(false)} />}
+    </OnboardingFrame>
   );
 }
 
@@ -444,7 +606,6 @@ function contactValue(contacts: StudioContact[], kind: StudioContact["kind"]) {
 // How a contact reads in the line under the name: the address itself.
 function contactText(c: StudioContact) {
   if (c.kind === "ig") return "@" + c.value.replace(/^@/, "");
-  if (c.kind === "line") return "LINE " + c.value;
   return c.value;
 }
 
@@ -476,6 +637,7 @@ function ArtistPage({
   shows,
   links,
   onSignOut,
+  welcome: initialWelcome,
 }: {
   artist: StudioArtist;
   works: StudioArtwork[];
@@ -483,8 +645,14 @@ function ArtistPage({
   shows: StudioExhibition[];
   links: StudioLink[];
   onSignOut: () => void;
+  welcome: WelcomeStep | null;
 }) {
   const router = useRouter();
+  const [welcome, setWelcome] = useState(initialWelcome);
+  function finishWelcome() {
+    setWelcome(null);
+    router.replace("/studio", { scroll: false });
+  }
   const supabase = createClient();
   const cardRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
@@ -864,7 +1032,10 @@ function ArtistPage({
 
       <p className={pf.contacts}>
         {contacts.map((c) => (
-          <span key={c.kind}>{contactText(c)}</span>
+          <span key={c.kind}>
+            {contactIcon(c.kind, 15)}
+            {contactText(c)}
+          </span>
         ))}
         {contacts.length === 0 && (
           <button className={st.addHint} onClick={() => setSheet("profile")} type="button">
@@ -1072,12 +1243,43 @@ function ArtistPage({
         </div>
       )}
 
-      <div className={st.doneBar}>
-        <span className={st.doneNote}>✓ Changes save as you go</span>
-        <Link href={`/${artist.slug}`} className={st.doneBtn}>
-          View your page
-        </Link>
-      </div>
+      {welcome === "profile" && <WelcomeProfile artist={artist} onNext={() => setWelcome("work")} />}
+      {welcome === "work" && (
+        <WorkComposer
+          artistSlug={artist.slug}
+          shows={showRows}
+          intro={
+            <div style={{ marginBottom: 24 }}>
+              <StepDots at="work" />
+            </div>
+          }
+          heading="Upload your art and sound"
+          closeLabel="Skip"
+          onClose={() => setWelcome("show")}
+          onSubmit={async (fields) => {
+            const result = await addWork(fields);
+            if (!result.error) setWelcome("show");
+            return result;
+          }}
+        />
+      )}
+      {welcome === "show" && (
+        <OnboardingFrame at="show" title="Create your exhibition" lead="Where and when people can see your work in person. Skip it if there's no show yet." onSkip={() => setWelcome("done")}>
+          <div style={{ marginTop: 22 }}>
+            <ShowForm
+              mode="exhibition"
+              works={rows}
+              existing={null}
+              onSubmit={async (fields) => {
+                const result = await saveShow(fields, null);
+                if (!result.error) setWelcome("done");
+                return result;
+              }}
+            />
+          </div>
+        </OnboardingFrame>
+      )}
+      {welcome === "done" && <WelcomeDone artist={artist} onFinish={finishWelcome} />}
 
       {sheet === "profile" && (
         <Sheet title="Edit your details" onClose={() => setSheet(null)}>
@@ -1470,9 +1672,15 @@ function WorkComposer({
   shows,
   onClose,
   onSubmit,
+  intro,
+  heading = "New work",
+  closeLabel,
 }: {
   artistSlug: string;
   shows: StudioExhibition[];
+  intro?: React.ReactNode; // shown above the form, e.g. the onboarding steps
+  heading?: string;
+  closeLabel?: string; // a word ("Skip") instead of the close glyph
   onClose: () => void;
   onSubmit: (fields: {
     title: string;
@@ -1571,15 +1779,28 @@ function WorkComposer({
       <div style={styles.backdrop} onClick={onClose} />
       <div style={styles.composer} role="dialog" aria-label="New work">
         <div style={styles.composerTop}>
-          <button style={styles.ghostIconBtn} onClick={onClose} aria-label="Close" type="button">
-            {CLOSE_GLYPH}
-          </button>
-          <b style={{ fontSize: 14, fontWeight: 700 }}>New work</b>
-          <button style={styles.linkish} onClick={fillSample} type="button">
-            Fill a sample
-          </button>
+          {closeLabel ? (
+            <button style={styles.linkish} onClick={fillSample} type="button">
+              Fill a sample
+            </button>
+          ) : (
+            <button style={styles.ghostIconBtn} onClick={onClose} aria-label="Close" type="button">
+              {CLOSE_GLYPH}
+            </button>
+          )}
+          <b style={{ fontSize: 14, fontWeight: 700 }}>{heading}</b>
+          {closeLabel ? (
+            <button style={styles.skip} onClick={onClose} type="button">
+              {closeLabel}
+            </button>
+          ) : (
+            <button style={styles.linkish} onClick={fillSample} type="button">
+              Fill a sample
+            </button>
+          )}
         </div>
         <div style={styles.composerBody}>
+          {intro}
           <div style={styles.composerHead}>
             <button
               type="button"
@@ -2804,6 +3025,69 @@ const styles: Record<string, React.CSSProperties> = {
   handle: { width: 36, height: 4, borderRadius: 999, background: "rgba(255,255,255,.22)", margin: "6px auto 16px" },
   sheetTitle: { fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 16 },
 
+  onboarding: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 61,
+    maxWidth: 520,
+    margin: "0 auto",
+    background: "#0f0f0f",
+    color: "#fff",
+    display: "flex",
+    flexDirection: "column",
+    animation: "vt-fade 240ms ease-out both",
+  },
+  onboardingTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "calc(14px + env(safe-area-inset-top)) 12px 6px 22px",
+    minHeight: 58,
+  },
+  onboardingBody: { flex: 1, overflowY: "auto", padding: "8px 22px calc(32px + env(safe-area-inset-bottom))" },
+  onboardingTitle: { fontSize: 28, fontWeight: 500, lineHeight: 1.15, marginTop: 26 },
+  onboardingLead: { fontSize: 15, lineHeight: 1.5, color: "rgba(255,255,255,.66)", marginTop: 8 },
+  skip: { minHeight: 44, padding: "0 12px", background: "none", border: 0, color: "#fff", fontSize: 15, fontWeight: 500, cursor: "pointer" },
+  steps: { listStyle: "none", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: 0, margin: "4px 0 0" },
+  step: { display: "flex", flexDirection: "column", alignItems: "center", gap: 7, fontSize: 11.5, fontWeight: 500, textAlign: "center", transition: "opacity 300ms" },
+  stepIcon: {
+    width: "100%",
+    aspectRatio: "1.15",
+    maxHeight: 64,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    background: "#1b1b1b",
+    transition: "background 300ms, color 300ms",
+  },
+  stepIconOn: { background: "#fff", color: "#0f0f0f" },
+  linkPreview: { fontSize: 20, fontWeight: 500, padding: "14px 16px", borderRadius: 14, background: "#1b1b1b", overflowWrap: "anywhere", margin: 0 },
+  avatarPick: {
+    width: 96,
+    height: 96,
+    borderRadius: 999,
+    alignSelf: "center",
+    border: "1px dashed rgba(255,255,255,.35)",
+    background: "#1b1b1b center/cover no-repeat",
+    color: "rgba(255,255,255,.66)",
+    display: "grid",
+    placeItems: "center",
+    cursor: "pointer",
+  },
+  ghostWide: {
+    height: 48,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "none",
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: 500,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textDecoration: "none",
+    cursor: "pointer",
+  },
   composer: {
     position: "fixed",
     inset: 0,

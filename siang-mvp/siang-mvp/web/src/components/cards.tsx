@@ -2,6 +2,7 @@ import Link from "next/link";
 import { dayMonthYear, daysLeft, showTiming, showWhenText } from "@/lib/format";
 import { CALENDAR_SM, PIN_SM } from "@/lib/icons";
 import type { Artist, Show, Work } from "@/lib/types";
+import { FORWARD, Morph } from "./PageTransition";
 import SoundBadge from "./SoundBadge";
 import styles from "./app.module.css";
 
@@ -64,10 +65,12 @@ export function WorkCard({ artist, work }: { artist: Artist; work: Work }) {
   const track = workTrack(work);
   return (
     <article className={`${styles.card} ${styles.shade}`}>
-      <Picture className={styles.cardImg} src={work.coverUrl} fallback={artist.cardBg} />
+      <Morph name={`work-${work.dbId}`}>
+        <Picture className={styles.cardImg} src={work.coverUrl} fallback={artist.cardBg} />
+      </Morph>
       <Byline artist={artist} />
       <h2 className={styles.cardTitle}>“{work.title}”</h2>
-      <Link className={styles.cover} href={`/${artist.slug}/${work.id}`} aria-label={`${work.title} by ${artist.name}`} />
+      <Link className={styles.cover} href={`/${artist.slug}/${work.id}`} transitionTypes={FORWARD} aria-label={`${work.title} by ${artist.name}`} />
       {track && <SoundBadge track={track} title={work.title} />}
     </article>
   );
@@ -85,7 +88,7 @@ export function ShowCard({ artist, show, today }: { artist: Artist; show: Show; 
   const where = show.city || show.venue;
   const when = showWhenText(show);
   return (
-    <Link className={`${styles.show} ${styles.shade}`} href={`/${artist.slug}/shows/${show.slug}`}>
+    <Link className={`${styles.show} ${styles.shade}`} href={`/${artist.slug}/shows/${show.slug}`} transitionTypes={FORWARD}>
       <Picture className={styles.cardImg} src={showCover(artist, show)} fallback={artist.cardBg} />
       <Byline artist={artist} size={28} />
       <span className={styles.showMeta}>
@@ -112,10 +115,12 @@ export function ShowCard({ artist, show, today }: { artist: Artist; show: Show; 
 // Hot Artist!: one work in an artist's strip, as wide as its picture.
 export function StripTile({ artist, work }: { artist: Artist; work: Work }) {
   return (
-    <Link className={styles.stripTile} href={`/${artist.slug}/${work.id}`}>
+    <Link className={styles.stripTile} href={`/${artist.slug}/${work.id}`} transitionTypes={FORWARD}>
       {work.coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={work.coverUrl} alt="" loading="lazy" decoding="async" />
+        <Morph name={`work-${work.dbId}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={work.coverUrl} alt="" loading="lazy" decoding="async" />
+        </Morph>
       ) : (
         <span style={{ position: "absolute", inset: 0, background: artist.cardBg }} />
       )}

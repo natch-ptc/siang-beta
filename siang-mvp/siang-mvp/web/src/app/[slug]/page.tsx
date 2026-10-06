@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import ArtistProfile from "@/components/ArtistProfile";
-import TabBar from "@/components/TabBar";
+import PageTransition from "@/components/PageTransition";
 import ViewBeacon from "@/components/ViewBeacon";
 import { loadArtist, loadOwnSlug } from "@/lib/load";
 import { todayInThailand } from "@/lib/format";
@@ -30,8 +30,9 @@ export default async function ArtistPage({ params }: Props) {
   return (
     <main className={app.app}>
       {!own && <ViewBeacon kind="artist" id={artist.id} />}
-      <ArtistProfile artist={artist} today={todayInThailand()} own={own} share={artistShare(artist)} />
-      <TabBar />
+      <PageTransition>
+        <ArtistProfile artist={artist} today={todayInThailand()} own={own} share={artistShare(artist)} />
+      </PageTransition>
     </main>
   );
 }

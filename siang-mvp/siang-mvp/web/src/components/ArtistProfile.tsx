@@ -8,6 +8,7 @@ import type { ShareInfo } from "@/lib/share";
 import { isCollection, type Artist, type Contact } from "@/lib/types";
 import { Avatar, Picture, ShowCard } from "./cards";
 import FollowButton from "./FollowButton";
+import { FORWARD, Morph } from "./PageTransition";
 import ReportButton from "./ReportButton";
 import ShareButton from "./ShareButton";
 import app from "./app.module.css";
@@ -25,7 +26,6 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 // How a contact reads in the line under the name: the address itself.
 function contactText(c: Contact) {
   if (c.kind === "ig") return "@" + c.value.replace(/^@/, "");
-  if (c.kind === "line") return "LINE " + c.value;
   if (c.kind === "web") return c.value.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return c.value;
 }
@@ -62,6 +62,7 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
         <p className={styles.contacts}>
           {artist.contacts.map((c) => (
             <a key={c.kind} href={contactHref(c.kind, c.value)} target="_blank" rel="noopener noreferrer" aria-label={`${contactLabel(c.kind)}: ${c.value}`}>
+              {contactIcon(c.kind, 15)}
               {contactText(c)}
             </a>
           ))}
@@ -93,8 +94,10 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
         (artist.works.length > 0 ? (
           <div className={styles.mosaic} role="tabpanel">
             {artist.works.map((w) => (
-              <Link key={w.dbId} href={`/${artist.slug}/${w.id}`} className={styles.tile}>
-                <Picture className={styles.tileImg} src={w.coverUrl} fallback={artist.cardBg} />
+              <Link key={w.dbId} href={`/${artist.slug}/${w.id}`} className={styles.tile} transitionTypes={FORWARD}>
+                <Morph name={`work-${w.dbId}`}>
+                  <Picture className={styles.tileImg} src={w.coverUrl} fallback={artist.cardBg} />
+                </Morph>
                 <span className={styles.tileText}>
                   <span className={styles.tileTitle}>{w.title}</span>
                   <span className={styles.tileDate}>{dayMonthYear(w.createdAt)}</span>

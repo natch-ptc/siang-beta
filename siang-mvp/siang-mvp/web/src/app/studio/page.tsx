@@ -1,13 +1,18 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { artistColumns, showColumns, withFallback, workColumns } from "@/lib/queries";
-import StudioClient, { type StudioArtist, type StudioArtwork, type StudioContact, type StudioExhibition, type StudioLink } from "@/components/StudioClient";
+import StudioClient, { type WelcomeStep, type StudioArtist, type StudioArtwork, type StudioContact, type StudioExhibition, type StudioLink } from "@/components/StudioClient";
 
-export default async function StudioPage() {
+const STEPS: WelcomeStep[] = ["profile", "work", "show", "done"];
+
+export default async function StudioPage({ searchParams }: { searchParams: Promise<{ welcome?: string | string[] }> }) {
+  const { welcome } = await searchParams;
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
   const email = claimsData?.claims?.email as string | undefined;
+  // Name and Instagram given at sign up (LoginClient), to fill the first onboarding step.
+  const meta = (claimsData?.claims?.user_metadata ?? {}) as { name?: string; instagram?: string };
 
   if (!userId) redirect("/login");
 
@@ -44,5 +49,15 @@ export default async function StudioPage() {
     links = (linksRes.data as StudioLink[]) ?? [];
   }
 
-  return <StudioClient email={email ?? ""} artist={artist ?? null} works={works} contacts={contacts} shows={shows} links={links} />;
+  return (
+    <StudioClient
+      email={email ?? ""}
+      suggestedName={meta.name ?? ""}
+      instagram={meta.instagram ?? ""}
+      welcome={STEPS.find((s) => s === welcome) ?? null}
+      artist={artist ?? null} works={works} contacts={contacts}
+      shows={shows}
+      links={links}
+    />
+  );
 }

@@ -1,0 +1,40 @@
+/* The skeleton in app/loading.tsx. */
+.bar,
+.chips span,
+.grid span {
+  border-radius: 12px;
+  background: linear-gradient(100deg, var(--surface) 30%, var(--surface-hi) 50%, var(--surface) 70%);
+  background-size: 300% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+.bar {
+  height: 34px;
+  width: 150px;
+  margin: 7px var(--gutter) 0;
+}
+.chips {
+  display: flex;
+  gap: 14px;
+  padding: 26px var(--gutter) 0;
+}
+.chips span {
+  width: 84px;
+  height: 18px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 22px 10px 0;
+}
+.grid span {
+  aspect-ratio: 211 / 303;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}

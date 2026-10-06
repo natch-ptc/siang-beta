@@ -48,13 +48,15 @@
 .contacts {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 12px;
+  gap: 2px 16px;
   padding: 16px var(--gutter) 0;
   font-size: 14.5px;
 }
-.contacts a {
+.contacts a,
+.contacts > span {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   min-height: 32px;
   text-decoration: none;
   overflow-wrap: anywhere;
