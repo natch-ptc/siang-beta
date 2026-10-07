@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isOfficial } from "@/lib/beta";
 import { dayMonthYear, daysLeft, showTiming, showWhenText } from "@/lib/format";
 import { CALENDAR_SM, PIN_SM } from "@/lib/icons";
 import type { Artist, Show, Work } from "@/lib/types";
@@ -69,7 +70,9 @@ export function WorkCard({ artist, work }: { artist: Artist; work: Work }) {
         <Picture className={styles.cardImg} src={work.coverUrl} fallback={artist.cardBg} />
       </Morph>
       <Byline artist={artist} />
-      <h2 className={styles.cardTitle}>“{work.title}”</h2>
+      <h2 className={styles.cardTitle}>
+        {isOfficial(artist.slug) && <span className={styles.exampleTag}>Example</span>}“{work.title}”
+      </h2>
       <Link className={styles.cover} href={`/${artist.slug}/${work.id}`} transitionTypes={FORWARD} aria-label={`${work.title} by ${artist.name}`} />
       {track && <SoundBadge track={track} title={work.title} />}
     </article>

@@ -44,35 +44,38 @@
   transform: var(--press);
   background: var(--surface);
 }
-/* ── The demo's invitation to join ─────────────────────── */
-.demoBar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 var(--gutter) 6px;
-  padding: 10px 10px 10px 16px;
-  border-radius: 18px;
-  background: var(--surface);
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--fg-soft);
-  text-decoration: none;
-}
-.demoBar b {
-  color: var(--fg);
-  font-weight: 500;
-}
-.demoBarCta {
-  flex: none;
-  height: 36px;
-  padding: 0 14px;
+/* Works on Siang's own page are examples made by the team (lib/beta.ts). */
+.exampleTag {
   display: inline-flex;
   align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  margin-right: 6px;
   border-radius: 999px;
   background: var(--paper);
   color: var(--on-paper);
+  font-family: var(--font);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+.exampleNote {
+  margin: 12px var(--gutter) 0;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: var(--surface);
   font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+.exampleNote b {
+  color: var(--fg);
   font-weight: 500;
+}
+.exampleNote a {
+  color: var(--fg);
+  text-underline-offset: 3px;
 }
 
 /* ── Search ─────────────────────────────────────────────── */

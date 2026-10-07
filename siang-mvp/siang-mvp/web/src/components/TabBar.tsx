@@ -17,13 +17,11 @@ const TABS = [
 const HIDDEN = ["/about", "/join", "/login", "/w", "/auth"];
 
 // Lives in the root layout, so it stays still while pages change under it.
-// Inside the demo (/demo/...) the tabs list the example artists.
 export default function TabBar() {
   const pathname = usePathname();
   if (HIDDEN.some((p) => pathname === p || pathname.startsWith(p + "/"))) return null;
-  const base = pathname === "/demo" || pathname.startsWith("/demo/") ? "/demo" : "";
   const tabs = [
-    ...TABS.map((t) => ({ ...t, href: base + t.path || "/", on: pathname === (base + t.path || "/") })),
+    ...TABS.map((t) => ({ ...t, href: t.path || "/", on: pathname === (t.path || "/") })),
     { href: "/me", label: "Profile", icon: NAV_PROFILE, on: ["/me", "/studio", "/saved"].includes(pathname) },
   ];
   return (

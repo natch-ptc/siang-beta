@@ -18,7 +18,7 @@ export default async function SavedPage() {
   const supabase = await createClient();
   let artists: Artist[] = [];
   try {
-    artists = [...(await fetchArtists(supabase, "registered")), ...(await fetchArtists(supabase, "examples"))];
+    artists = await fetchArtists(supabase);
   } catch (error) {
     console.error("fetchArtists failed", error);
   }

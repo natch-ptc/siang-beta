@@ -9,12 +9,10 @@ import styles from "./app.module.css";
 // The bar at the top of each tab: the logo, search (it filters the list on
 // the tab) and the scan button that sits on every tab (PRD 6.1).
 export default function AppHeader({
-  base = "",
   query,
   onQuery,
   placeholder,
 }: {
-  base?: string;
   query: string;
   onQuery: (q: string) => void;
   placeholder: string;
@@ -29,7 +27,7 @@ export default function AppHeader({
   return (
     <>
       <header className={styles.top}>
-        <Link href={base || "/"} className={styles.logoLink}>
+        <Link href="/" className={styles.logoLink}>
           <Logo height={30} />
         </Link>
         <div className={styles.topActs}>

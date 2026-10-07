@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { isOfficial } from "@/lib/beta";
 import { dayMonthYear, monthYear } from "@/lib/format";
 import { SAVE_ICON, ABOUT_CHIP, ART_CHIP, COLLECTION_CHIP, LINK_ICON, PIN_SM, SHOWS_CHIP, contactHref, contactIcon, contactLabel } from "@/lib/icons";
 import type { ShareInfo } from "@/lib/share";
@@ -37,6 +38,7 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
   const exhibitions = artist.shows.filter((s) => !isCollection(s));
   const collections = artist.shows.filter(isCollection);
   const place = [artist.based, artist.country].filter(Boolean).join(", ");
+  const official = isOfficial(artist.slug);
 
   return (
     <>
@@ -77,6 +79,12 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
         </a>
       )}
 
+      {official && (
+        <p className={app.exampleNote}>
+          <b>The Siang team&apos;s own page.</b> The works here are examples, made to show what a finished page looks like. <Link href="/join">Make yours</Link>
+        </p>
+      )}
+
       <div className={app.chips} role="tablist" aria-label={`${artist.name}'s page`}>
         {TABS.map((t) => (
           <button
@@ -107,7 +115,10 @@ export default function ArtistProfile({ artist, today, own, share }: { artist: A
                   <Picture className={styles.tileImg} src={w.coverUrl} fallback={artist.cardBg} />
                 </Morph>
                 <span className={styles.tileText}>
-                  <span className={styles.tileTitle}>{w.title}</span>
+                  <span className={styles.tileTitle}>
+                    {official && <span className={app.exampleTag}>Example</span>}
+                    {w.title}
+                  </span>
                   <span className={styles.tileDate}>{dayMonthYear(w.createdAt)}</span>
                 </span>
               </Link>

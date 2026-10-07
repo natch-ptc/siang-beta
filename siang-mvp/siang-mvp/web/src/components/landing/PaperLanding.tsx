@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { DEMO_PATH } from "@/lib/beta";
+import { OFFICIAL_PATH } from "@/lib/beta";
 import styles from "./PaperLanding.module.css";
 
 type Paper = {
@@ -92,8 +92,8 @@ export default function PaperLanding() {
           <div className={styles.hint} style={{ opacity: hintGone ? 0 : 1 }}>
             Drag the papers around
           </div>
-          <Link href={DEMO_PATH} className={styles.cta}>
-            Try the demo
+          <Link href={OFFICIAL_PATH} className={styles.cta}>
+            See an example
           </Link>
           <Link href="/join" className={`${styles.cta} ${styles.ctaOutline}`}>
             Join the beta

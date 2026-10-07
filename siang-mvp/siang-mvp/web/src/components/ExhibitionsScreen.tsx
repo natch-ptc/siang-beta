@@ -14,7 +14,7 @@ import styles from "./app.module.css";
 const ORDER: Record<ShowTiming, number> = { now: 0, upcoming: 1, undated: 2, past: 3 };
 
 // The Place tab ("Exhibition"): exhibitions around Thailand, by city.
-export default function ExhibitionsScreen({ artists, today, base = "" }: { artists: Artist[]; today: string; base?: string }) {
+export default function ExhibitionsScreen({ artists, today }: { artists: Artist[]; today: string }) {
   const [city, setCity] = useState<string | null>(null); // null = Now Showing
   const [query, setQuery] = useState("");
 
@@ -49,11 +49,11 @@ export default function ExhibitionsScreen({ artists, today, base = "" }: { artis
       matches(query, x.show.title, x.show.venue, x.show.city, x.artist.name, x.artist.slug)
   );
 
-  // Held back for now (lib/beta.ts). The demo keeps its example exhibitions.
-  if (!EXHIBITIONS_OPEN && !base) {
+  // Held back for now (lib/beta.ts).
+  if (!EXHIBITIONS_OPEN) {
     return (
       <>
-        <AppHeader base={base} query={query} onQuery={setQuery} placeholder="Search exhibitions and places" />
+        <AppHeader query={query} onQuery={setQuery} placeholder="Search exhibitions and places" />
         <div className={styles.empty}>
           <span className={styles.soonTag}>Coming soon</span>
           <h2>Exhibitions are on the way</h2>
@@ -65,7 +65,7 @@ export default function ExhibitionsScreen({ artists, today, base = "" }: { artis
 
   return (
     <>
-      <AppHeader base={base} query={query} onQuery={setQuery} placeholder="Search exhibitions and places" />
+      <AppHeader query={query} onQuery={setQuery} placeholder="Search exhibitions and places" />
       <div className={styles.chips} role="group" aria-label="Where">
         <button className={`${styles.chip} ${city === null ? styles.chipOn : ""}`} onClick={() => setCity(null)} aria-pressed={city === null} type="button">
           {ART_CHIP} Now Showing

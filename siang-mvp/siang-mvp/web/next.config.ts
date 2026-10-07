@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
       // The old waitlist pages: joining now makes the account straight away.
       { source: "/join-beta", destination: "/join", permanent: false },
       { source: "/claim-your-link", destination: "/join", permanent: false },
+      // The demo with its made-up artists is gone; the examples now live on Siang's own page.
+      { source: "/demo", destination: "/siang", permanent: false },
+      { source: "/demo/:path*", destination: "/siang", permanent: false },
     ];
   },
   async rewrites() {

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { demoSound } from "./demo-sounds";
+import { OFFICIAL_SLUG } from "./beta";
 import type { Artist, ArtistLink, Availability, Contact, Show, Work } from "./types";
 
 type WorkRow = {
@@ -113,15 +113,12 @@ const artistSelect = (level: Level) => `
   artworks ( ${workColumns(level)}, exhibition_artworks ( exhibition_id ), artwork_blocks ( type, media_url, sort_order ) )
 `;
 
-// "examples" are the seeded demo artists (no account owns them); "registered"
-// are artists who signed up and built their page in the Studio.
-export type ArtistSet = "examples" | "registered";
-
-export async function fetchArtists(supabase: SupabaseClient, set: ArtistSet): Promise<Artist[]> {
-  const rows = await withFallback<Row[]>((level) => {
-    const query = supabase.from("artists").select(artistSelect(level)).order("name");
-    return set === "examples" ? query.is("user_id", null) : query.not("user_id", "is", null);
-  });
+// Everyone on Siang: the artists who signed up and built their page in the
+// Studio, and Siang's own page. A row no account owns is not listed otherwise.
+export async function fetchArtists(supabase: SupabaseClient): Promise<Artist[]> {
+  const rows = await withFallback<Row[]>((level) =>
+    supabase.from("artists").select(artistSelect(level)).or(`user_id.not.is.null,slug.eq.${OFFICIAL_SLUG}`).order("name")
+  );
   return (rows ?? []).filter((row) => !row.hidden).map(rowToArtist);
 }
 
@@ -177,9 +174,6 @@ function rowToArtist(row: Row): Artist {
   const live = artworks.filter((w) => (w.status ?? "published") === "published");
   const slugByShowId = new Map(row.exhibitions.map((sh) => [sh.id, sh.slug] as const));
 
-  // Only the seeded demo artists (no account owns them) borrow an example sound.
-  const example = row.user_id ? null : demoSound(row.slug);
-
   const works: Work[] = live.map((w) => ({
     id: w.slug,
     dbId: w.id,
@@ -192,9 +186,8 @@ function rowToArtist(row: Row): Artist {
       .filter((b) => b.type === "image" && b.media_url)
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((b) => b.media_url!),
-    audioUrl: w.audio_url ?? example?.url ?? null,
-    soundCredit: w.audio_url ? null : example?.credit ?? null,
-    durationSec: w.audio_url ? w.duration_sec ?? 0 : example?.seconds ?? 0,
+    audioUrl: w.audio_url,
+    durationSec: w.duration_sec ?? 0,
     listenCount: w.listen_count,
     createdAt: w.created_at,
     year: w.year ?? null,
