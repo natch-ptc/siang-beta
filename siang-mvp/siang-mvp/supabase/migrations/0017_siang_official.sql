@@ -1,9 +1,10 @@
 -- Siang's own artist page, siang.co/siang, and the end of the made-up demo
 -- artists. Needs 0015_v3_fields.sql and 0016_beta_checklist.sql to be run first.
 --
--- 1. Deletes every artist row that no account owns: the ten seeded demo
---    artists (Anong Vetchakul, Kanit Prasong...), with their works, shows,
---    contacts and listens. Artists who signed up are not touched.
+-- 1. Deletes the ten seeded demo artists (Anong Vetchakul, Kanit Prasong...),
+--    with their works, shows, contacts and listens: every artist no account
+--    owns, plus Anong, whose page a test account had claimed. Other artists
+--    who signed up are not touched.
 -- 2. Creates the artist "siang" (owned by no account; lib/beta.ts names it).
 --    Its About holds the notes the team wrote for the landing page, and its
 --    three works are complete examples, labelled "Example" by the app.
@@ -12,8 +13,12 @@
 
 begin;
 
-delete from exhibitions where artist_id in (select id from artists where user_id is null);
-delete from artists where user_id is null;
+-- Anong Vetchakul is one of the made-up demo artists, but a test account
+-- claimed her page, so she has a user_id; she goes too. Two of the example
+-- works below reuse her work codes, so the insert would fail if she stayed.
+-- The account itself is kept; signing in again starts a new page.
+delete from exhibitions where artist_id in (select id from artists where user_id is null or slug = 'anong-vetchakul');
+delete from artists where user_id is null or slug = 'anong-vetchakul';
 
 with siang as (
   insert into artists (slug, name, discipline, bio, statement, avatar_url, card_bg, card_ink, joined_tz)
