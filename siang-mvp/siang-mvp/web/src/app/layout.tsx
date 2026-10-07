@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import OpeningSplash from "@/components/OpeningSplash";
 import TabBar from "@/components/TabBar";
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         {children}
         <TabBar />
+        <OpeningSplash />
       </body>
     </html>
   );
