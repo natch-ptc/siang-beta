@@ -7,7 +7,7 @@ import { DEMO_PATH } from "@/lib/beta";
 import styles from "./PaperLanding.module.css";
 
 type Paper = {
-  tone: "pink" | "white";
+  tone: "black" | "white";
   label: string;
   body: string[];
   sign?: { name: string; role?: string };
@@ -47,7 +47,7 @@ const PAPERS: Paper[] = [
     rot: -5,
   },
   {
-    tone: "pink",
+    tone: "black",
     label: "Siang on… why we listen",
     body: [
       "พวกเราเป็นกลุ่มเล็ก ๆ ของเอนจิเนียร์ที่เอนจอยอาร์ต เรารู้ว่าศิลปะแต่ละชิ้นมีคุณค่า เรื่องราว และเสียงของศิลปินทุกคนในนั้น พวกเราเลยอยากชวนทุกคนมาฟัง “เสียง” และให้ “เสียง” เป็นสื่อให้ศิลปินได้เล่าเรื่องราวผ่านเสียงพูด เสียงดนตรี หรือเสียงบรรยากาศของศิลปะแต่ละชิ้น",
@@ -95,7 +95,7 @@ export default function PaperLanding() {
           <Link href={DEMO_PATH} className={styles.cta}>
             Try the demo
           </Link>
-          <Link href="/join" className={`${styles.cta} ${styles.ctaBrand}`}>
+          <Link href="/join" className={`${styles.cta} ${styles.ctaOutline}`}>
             Join the beta
           </Link>
         </nav>
@@ -167,7 +167,7 @@ function PaperSheet({
   return (
     <div
       ref={elRef}
-      className={`${styles.paper} ${paper.tone === "pink" ? styles.pink : styles.white}`}
+      className={`${styles.paper} ${paper.tone === "black" ? styles.black : styles.white}`}
       style={
         {
           zIndex: z,

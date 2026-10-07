@@ -243,3 +243,35 @@
   background: var(--paper);
   color: var(--on-paper);
 }
+
+/* A section that is built but not open yet (exhibitions). */
+.soon {
+  padding: 22px 20px 24px;
+  border-radius: var(--radius-tile);
+  background: var(--surface);
+}
+.soon h2 {
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.soon p {
+  margin-top: 8px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+.soonTag {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 11px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-soft);
+}

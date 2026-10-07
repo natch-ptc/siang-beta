@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { showTiming, type ShowTiming } from "@/lib/format";
+import { EXHIBITIONS_OPEN } from "@/lib/beta";
 import { ART_CHIP, PIN_CHIP } from "@/lib/icons";
 import { isCollection, type Artist } from "@/lib/types";
 import AppHeader, { matches } from "./AppHeader";
@@ -47,6 +48,20 @@ export default function ExhibitionsScreen({ artists, today, base = "" }: { artis
       (city ? x.show.city === city : x.timing !== "past") &&
       matches(query, x.show.title, x.show.venue, x.show.city, x.artist.name, x.artist.slug)
   );
+
+  // Held back for now (lib/beta.ts). The demo keeps its example exhibitions.
+  if (!EXHIBITIONS_OPEN && !base) {
+    return (
+      <>
+        <AppHeader base={base} query={query} onQuery={setQuery} placeholder="Search exhibitions and places" />
+        <div className={styles.empty}>
+          <span className={styles.soonTag}>Coming soon</span>
+          <h2>Exhibitions are on the way</h2>
+          <p>Shows around Thailand, with where to go and until when. Until then, explore the art and the artists.</p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

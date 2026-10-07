@@ -1,44 +1,48 @@
 "use client";
 
-import { CalendarDots, PaintBrushBroad, UserPlus, Waveform } from "@phosphor-icons/react/dist/ssr";
-import { Mark } from "./Logo";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Plus, QrCode, UserCircle } from "@phosphor-icons/react/dist/ssr";
+import Logo, { Mark } from "./Logo";
+import m from "./Onboarding.module.css";
 
-// The frame the whole join flow shares, from the sign-up form (/join) to the
-// Studio's welcome steps: the Siang mark, the four Draft-1 steps, a title.
+// The join flow: a splash, one screen on what Siang is, then two short steps
+// (your account, your link). After that the artist lands on their own page,
+// where a short tour (components/Tour.tsx) points at sharing and uploading.
+// Nothing after the link is required: works are added one at a time, whenever.
 
-export type WelcomeStep = "profile" | "work" | "show" | "done";
+// What the Studio shows over the artist's page right after joining:
+// "ready" = the checkpoint (what you have now), "tour" = the two tips.
+export type WelcomeStep = "ready" | "tour";
 
-const STEPS = [
-  { id: "link", label: "Profile", icon: <UserPlus size={20} weight="bold" /> },
-  { id: "work", label: "Art & sound", icon: <PaintBrushBroad size={20} weight="bold" /> },
-  { id: "show", label: "Exhibition", icon: <CalendarDots size={20} weight="bold" /> },
-  { id: "done", label: "Your Siang", icon: <Waveform size={20} weight="bold" /> },
-] as const;
+const STEP_NAMES = ["Account", "Your link"];
 
-// Which of the four steps is current: link and profile are both "Profile".
-export function StepDots({ at }: { at: "link" | WelcomeStep }) {
-  const current = at === "profile" ? "link" : at;
-  const index = STEPS.findIndex((s) => s.id === current);
+// Where you are in the two steps. The bar for the current step fills as the screen arrives.
+export function Progress({ step }: { step: 1 | 2 }) {
   return (
-    <ol style={ob.steps} aria-label={`Step ${index + 1} of ${STEPS.length}`}>
-      {STEPS.map((s, i) => (
-        <li key={s.id} style={{ ...ob.step, opacity: i <= index ? 1 : 0.38 }} aria-current={i === index ? "step" : undefined}>
-          <span style={{ ...ob.stepIcon, ...(i === index ? ob.stepIconOn : null) }}>{s.icon}</span>
-          <span>{s.label}</span>
-        </li>
-      ))}
-    </ol>
+    <div className={m.progress} role="img" aria-label={`Step ${step} of ${STEP_NAMES.length}: ${STEP_NAMES[step - 1]}`}>
+      <div className={m.bars}>
+        {STEP_NAMES.map((name, i) => (
+          <span key={name} className={m.barTrack}>
+            {i < step && <span className={`${m.barFill} ${i === step - 1 ? m.barFillNew : ""}`} />}
+          </span>
+        ))}
+      </div>
+      <span className={m.progressLabel}>
+        {step} of {STEP_NAMES.length}
+      </span>
+    </div>
   );
 }
 
 export function OnboardingFrame({
-  at,
+  step,
   title,
   lead,
   onSkip,
   children,
 }: {
-  at: "link" | WelcomeStep;
+  step?: 1 | 2; // leave out on screens that aren't one of the two steps
   title: string;
   lead: string;
   onSkip?: () => void;
@@ -56,11 +60,92 @@ export function OnboardingFrame({
           <span />
         )}
       </div>
-      <div style={ob.onboardingBody}>
-        <StepDots at={at} />
+      <div style={ob.onboardingBody} className={m.stagger}>
+        {step ? <Progress step={step} /> : <span />}
         <h1 style={ob.onboardingTitle}>{title}</h1>
         <p style={ob.onboardingLead}>{lead}</p>
         {children}
+      </div>
+    </div>
+  );
+}
+
+// The first thing at /join: the mark fades up on its own, holds a moment, then
+// gives way to the intro. A tap skips the wait.
+export function Splash({ onDone }: { onDone: () => void }) {
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    const hold = setTimeout(() => setLeaving(true), 1700);
+    return () => clearTimeout(hold);
+  }, []);
+  useEffect(() => {
+    if (!leaving) return;
+    const out = setTimeout(onDone, 320);
+    return () => clearTimeout(out);
+  }, [leaving, onDone]);
+  return (
+    <button className={`${m.splash} ${leaving ? m.leaving : ""}`} onClick={() => setLeaving(true)} aria-label="Siang. Tap to continue" type="button">
+      <span className={m.splashInner}>
+        <span className={m.splashMark}>
+          <Logo height={34} />
+        </span>
+        <span className={m.splashLine} lang="th">
+          ศิลปะฟังได้
+        </span>
+      </span>
+    </button>
+  );
+}
+
+const POINTS = [
+  {
+    icon: <QrCode size={22} weight="bold" />,
+    title: "A QR code beside your work",
+    text: "Visitors scan it and hear you tell the story, in your own voice.",
+  },
+  {
+    icon: <UserCircle size={22} weight="bold" />,
+    title: "Your own artist page",
+    text: "One link for your works, your sound and how to reach you.",
+  },
+  {
+    icon: <Plus size={22} weight="bold" />,
+    title: "Add works one at a time",
+    text: "As many as you like, whenever you like. Nothing has to be finished today.",
+  },
+];
+
+// What Siang is, in one screen, before any form.
+export function Intro({ onStart }: { onStart: () => void }) {
+  return (
+    <div className={m.intro} role="dialog" aria-modal="true" aria-label="What Siang is">
+      <Logo height={20} />
+      <div className={`${m.introHead} ${m.stagger}`}>
+        <h1 className={m.introTitle}>
+          Art you
+          <br />
+          can hear
+        </h1>
+        <p className={m.introLead}>Siang puts the artist&apos;s voice next to the work: what it is, why you made it, in a minute of sound.</p>
+      </div>
+      <ul className={`${m.points} ${m.stagger}`}>
+        {POINTS.map((p) => (
+          <li key={p.title} className={m.point}>
+            <span className={m.pointIcon}>{p.icon}</span>
+            <span>
+              <b>{p.title}</b>
+              <span>{p.text}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className={m.introActs}>
+        <button style={ob.submit} onClick={onStart} type="button">
+          Create your artist page
+        </button>
+        <Link href="/login" style={ob.quiet}>
+          Already have an account? Sign in
+        </Link>
       </div>
     </div>
   );
@@ -87,22 +172,9 @@ export const ob: Record<string, React.CSSProperties> = {
     minHeight: 58,
   },
   onboardingBody: { flex: 1, overflowY: "auto", padding: "8px 22px calc(32px + env(safe-area-inset-bottom))" },
-  onboardingTitle: { fontSize: 28, fontWeight: 500, lineHeight: 1.15, marginTop: 26 },
+  onboardingTitle: { fontSize: 28, fontWeight: 500, lineHeight: 1.15, marginTop: 30 },
   onboardingLead: { fontSize: 15, lineHeight: 1.5, color: "rgba(255,255,255,.66)", marginTop: 8 },
   skip: { minHeight: 44, padding: "0 12px", background: "none", border: 0, color: "#fff", fontSize: 15, fontWeight: 500, cursor: "pointer" },
-  steps: { listStyle: "none", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: 0, margin: "4px 0 0" },
-  step: { display: "flex", flexDirection: "column", alignItems: "center", gap: 7, fontSize: 11.5, fontWeight: 500, textAlign: "center", transition: "opacity 300ms" },
-  stepIcon: {
-    width: "100%",
-    aspectRatio: "1.15",
-    maxHeight: 64,
-    borderRadius: 16,
-    display: "grid",
-    placeItems: "center",
-    background: "#1b1b1b",
-    transition: "background 300ms, color 300ms",
-  },
-  stepIconOn: { background: "#fff", color: "#0f0f0f" },
   form: { display: "flex", flexDirection: "column", gap: 14, marginTop: 22 },
   label: { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,.7)" },
   input: {

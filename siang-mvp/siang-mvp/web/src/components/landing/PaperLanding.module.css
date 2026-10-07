@@ -63,9 +63,9 @@
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.08), 0 30px 50px -18px rgba(0, 0, 0, 0.4);
 }
 
-.pink {
-  background: var(--magenta);
-  color: var(--pink-on-mag);
+.black {
+  background: var(--ink);
+  color: var(--white);
 }
 .white {
   background: var(--white);
@@ -130,11 +130,14 @@
   transform: scale(0.96);
   background: #1c1c1c;
 }
-.ctaBrand {
-  background: var(--magenta);
+/* The second action: an outline pill beside the black one. */
+.ctaOutline {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line-light);
 }
-.ctaBrand:active {
-  background: var(--magenta-deep);
+.ctaOutline:active {
+  background: var(--white);
 }
 
 .hint {

@@ -11,6 +11,7 @@ import {
   EDIT_ICON,
   DELETE_ICON,
   ADD_ICON,
+  CHECK_ICON,
   CAMERA_ICON,
   BACK_CHEVRON_SVG,
   CLOSE_GLYPH,
@@ -39,7 +40,10 @@ import { COUNTRIES, findCity, findCountry } from "@/lib/places";
 import { PHOTO_CARD_INK, PLAIN_CARD, averageHex, photoCardBg, photoFromCardBg, photoPosition } from "@/lib/card-cover";
 import type { ShareInfo } from "@/lib/share";
 import CardFace from "./CardFace";
-import { OnboardingFrame, StepDots, ob, type WelcomeStep } from "./Onboarding";
+import { OnboardingFrame, ob, type WelcomeStep } from "./Onboarding";
+import m from "./Onboarding.module.css";
+import Tour from "./Tour";
+import { EXHIBITIONS_OPEN } from "@/lib/beta";
 import { ShareSheet } from "./ShareButton";
 import Spinner from "./Spinner";
 // The Studio is the artist's profile as visitors see it (ArtistProfile), with
@@ -297,10 +301,10 @@ function ContactFields({ value, onChange }: { value: ContactInputs; onChange: (v
 
 // ── Onboarding ─────────────────────────────────────────────────────────────
 // After sign up (name, email, Instagram on /login), an artist goes through:
-// 1. their link, siang.co/<handle> (required), then three steps they can
-// skip: 2. profile details, 3. their first work with its sound, 4. an
-// exhibition. The four steps follow the Draft-1 "Create your artist profile"
-// cards. Steps 2 to 4 run over the Studio, from /studio?welcome=profile.
+// Joining is two steps: the account (/join), then this link. After that the
+// artist is on their own page: a checkpoint says what they have now
+// (/studio?welcome=ready), and a two-tip tour points at sharing and at
+// uploading a work. Photo, details, works and collections are never forced.
 
 // Step 1: the artist's name and link. The only step that can't be skipped,
 // because everything else hangs off the profile it creates.
@@ -357,12 +361,12 @@ function CreateProfile({ suggestedName, instagram }: { suggestedName: string; in
     }
     const ig = instagram.trim().replace(/^@/, "");
     if (ig) await supabase.from("artist_contacts").insert({ artist_id: res.data.id, kind: "ig", value: ig });
-    router.replace("/studio?welcome=profile");
+    router.replace("/studio?welcome=ready");
     router.refresh();
   }
 
   return (
-    <OnboardingFrame at="link" title="Your Siang link" lead="This is where people find you, and what your QR codes open.">
+    <OnboardingFrame step={2} title="Your Siang link" lead="This is where people find you, and what your QR codes open.">
       <form onSubmit={submit} style={{ ...styles.form, marginTop: 22 }}>
         <Field label="Artist name">
           <input
@@ -402,119 +406,52 @@ function CreateProfile({ suggestedName, instagram }: { suggestedName: string; in
   );
 }
 
-// Step 2: photo, art type, city and a short bio. Everything here can be
-// skipped and filled in later from Edit Profile.
-function WelcomeProfile({ artist, onNext }: { artist: StudioArtist; onNext: () => void }) {
-  const router = useRouter();
-  const supabase = createClient();
-  const photoRef = useRef<HTMLInputElement>(null);
-  const [avatar, setAvatar] = useState(artist.avatar_url);
-  const [uploading, setUploading] = useState(false);
-  const [discipline, setDiscipline] = useState(artist.discipline ?? "");
-  const [place, setPlace] = useState<Place>({ based: artist.based ?? "", country: artist.country ?? "Thailand", lat: artist.lat, lng: artist.lng });
-  const [bio, setBio] = useState(artist.bio ?? "");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function changePhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const url = await uploadFile(supabase, file);
-      const { error } = await supabase.from("artists").update({ avatar_url: url }).eq("id", artist.id);
-      if (error) throw error;
-      setAvatar(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not upload the photo.");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function save() {
-    setBusy(true);
-    setError(null);
-    const { error } = await supabase
-      .from("artists")
-      .update({
-        discipline: discipline || null,
-        based: place.based.trim() || null,
-        country: place.country.trim() || null,
-        lat: place.lat,
-        lng: place.lng,
-        bio: bio.trim() || null,
-      })
-      .eq("id", artist.id);
-    setBusy(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    router.refresh();
-    onNext();
-  }
-
+// The checkpoint right after the link is made: what the artist has now, and
+// what can wait. Nothing here asks for more; it leads to their own page.
+function WelcomeReady({ artist, onNext }: { artist: StudioArtist; onNext: () => void }) {
   return (
-    <OnboardingFrame at="profile" title="Create your profile" lead="A photo, what you make and where. You can skip this and add it later." onSkip={onNext}>
-      <div style={{ ...styles.form, marginTop: 22 }}>
-        <button
-          style={{ ...styles.avatarPick, backgroundImage: avatar ? `url("${avatar}")` : undefined }}
-          onClick={() => photoRef.current?.click()}
-          disabled={uploading}
-          aria-label={avatar ? "Change your photo" : "Add a photo"}
-          type="button"
-        >
-          {uploading ? <Spinner size={22} label="Uploading photo" /> : !avatar && CAMERA_ICON}
-        </button>
-        <input ref={photoRef} type="file" accept="image/*" hidden onChange={changePhoto} />
-        <ArtTypeField value={discipline} onChange={setDiscipline} />
-        <PlacePicker value={place} onChange={setPlace} />
-        <label style={styles.label}>
-          <span style={{ display: "flex", justifyContent: "space-between" }}>
-            Short bio <em style={{ fontStyle: "normal", opacity: 0.6 }}>{bio.length}/{BIO_LIMIT}</em>
-          </span>
-          <textarea style={styles.textarea} rows={3} maxLength={BIO_LIMIT} value={bio} onChange={(e) => setBio(e.target.value.slice(0, BIO_LIMIT))} />
-        </label>
-        {error && <p style={styles.error}>{error}</p>}
-        <button style={styles.submit} onClick={save} disabled={busy || uploading} type="button">
-          {busy ? <Spinner /> : null} Continue
-        </button>
-      </div>
-    </OnboardingFrame>
-  );
-}
-
-// Step 4: the link and the QR, ready to share.
-function WelcomeDone({ artist, onFinish }: { artist: StudioArtist; onFinish: () => void }) {
-  const [sharing, setSharing] = useState(false);
-  const info: ShareInfo = {
-    title: artist.name,
-    subtitle: `@${artist.slug}`,
-    meta: [artist.based, artist.country].filter(Boolean).join(", "),
-    url: `https://siang.co/${artist.slug}`,
-    qrUrl: `https://siang.co/${artist.slug}`,
-    code: null,
-    hint: "Scan to see the artist",
-    file: `siang-${artist.slug}`,
-  };
-  return (
-    <OnboardingFrame at="done" title="Your Siang is ready" lead="Share the link, or print the QR and put it next to your work.">
+    <OnboardingFrame title="Your page is live" lead="That was all you had to do. Here is what you have, and what you can add whenever you like.">
       <p style={styles.linkPreview}>siang.co/{artist.slug}</p>
-      <div style={{ ...styles.form, marginTop: 18 }}>
-        <button style={styles.submit} onClick={() => setSharing(true)} type="button">
-          {SHARE_GLYPH} Share your link and QR
-        </button>
-        <Link href={`/${artist.slug}`} style={styles.ghostWide}>
-          See your page
-        </Link>
-        <button style={styles.ghostWide} onClick={onFinish} type="button">
-          Go to your studio
+      <div>
+        <ul className={m.have}>
+          <li>
+            <span className={m.tick}>{CHECK_ICON}</span>
+            <span>
+              Your artist page
+              <small>Anyone with the link can open it.</small>
+            </span>
+          </li>
+          <li>
+            <span className={m.tick}>{CHECK_ICON}</span>
+            <span>
+              A QR code for your page
+              <small>Share it or print it from the share button.</small>
+            </span>
+          </li>
+        </ul>
+        <p className={m.haveHead}>Whenever you like</p>
+        <ul className={m.have}>
+          <li className={m.haveLater}>
+            <span className={m.later} />
+            <span>
+              Your photo, city and a short bio
+              <small>From Edit Profile.</small>
+            </span>
+          </li>
+          <li className={m.haveLater}>
+            <span className={m.later} />
+            <span>
+              Works with your voice
+              <small>One at a time, as many as you like.</small>
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div style={{ ...styles.form, marginTop: 26 }}>
+        <button style={styles.submit} onClick={onNext} type="button">
+          See my page
         </button>
       </div>
-      {sharing && <ShareSheet info={info} onClose={() => setSharing(false)} />}
     </OnboardingFrame>
   );
 }
@@ -938,7 +875,7 @@ function ArtistPage({
         </Link>
         <span className={st.barTitle}>{copied ? "Link copied" : "Your studio"}</span>
         <div className={app.topActs}>
-          <button className={app.iconBtn} onClick={share} aria-label="Share your page" type="button">
+          <button className={app.iconBtn} onClick={share} aria-label="Share your page" data-tour="share" type="button">
             {SHARE_GLYPH}
           </button>
           <button className={app.iconBtn} onClick={onSignOut} aria-label="Sign out" type="button">
@@ -1017,9 +954,9 @@ function ArtistPage({
 
       {tab === "art" && (
         <div className={pf.mosaic} role="tabpanel">
-          <button className={`${pf.tile} ${st.addTile}`} onClick={() => setSheet("compose")} type="button">
+          <button className={`${pf.tile} ${st.addTile}`} onClick={() => setSheet("compose")} data-tour="upload" type="button">
             {ADD_ICON}
-            <span>Upload a work</span>
+            <span>{rows.length ? "Add another work" : "Upload a work"}</span>
           </button>
           {rows.map((w) => (
             <button
@@ -1045,7 +982,16 @@ function ArtistPage({
         </div>
       )}
 
-      {tab === "shows" && (
+      {tab === "shows" && !EXHIBITIONS_OPEN && (
+        <div className={pf.panel} role="tabpanel">
+          <div className={st.soon}>
+            <span className={st.soonTag}>Coming soon</span>
+            <h2>Exhibitions are on the way</h2>
+            <p>Soon you can add a show with its place and dates. For now, upload your works; you can group them into an exhibition when this opens.</p>
+          </div>
+        </div>
+      )}
+      {tab === "shows" && EXHIBITIONS_OPEN && (
         <div className={`${pf.panel} ${pf.stack}`} role="tabpanel">
           {exhibitions.map(showCard)}
           {exhibitions.length === 0 && <p className={pf.none}>Add an exhibition with its place and dates, so people know where to go and until when.</p>}
@@ -1189,43 +1135,32 @@ function ArtistPage({
         </div>
       )}
 
-      {welcome === "profile" && <WelcomeProfile artist={artist} onNext={() => setWelcome("work")} />}
-      {welcome === "work" && (
-        <WorkComposer
-          artistSlug={artist.slug}
-          shows={showRows}
-          intro={
-            <div style={{ marginBottom: 24 }}>
-              <StepDots at="work" />
-            </div>
-          }
-          heading="Upload your art and sound"
-          closeLabel="Skip"
-          onClose={() => setWelcome("show")}
-          onSubmit={async (fields) => {
-            const result = await addWork(fields);
-            if (!result.error) setWelcome("show");
-            return result;
-          }}
+      {welcome === "ready" && <WelcomeReady artist={artist} onNext={() => setWelcome("tour")} />}
+      {welcome === "tour" && (
+        <Tour
+          onClose={finishWelcome}
+          steps={[
+            {
+              target: '[data-tour="share"]',
+              title: "This is your page. Share it",
+              text: `Send siang.co/${artist.slug} to your Instagram, LINE or Facebook, or print its QR code.`,
+              next: "Next",
+              skip: "Skip the tour",
+            },
+            {
+              target: '[data-tour="upload"]',
+              title: "Add your first work",
+              text: "A picture and a minute of your voice make one work. Add as many as you like, one at a time. This tile is always here.",
+              next: "Upload now",
+              skip: "Later",
+              onNext: () => {
+                setTab("art");
+                setSheet("compose");
+              },
+            },
+          ]}
         />
       )}
-      {welcome === "show" && (
-        <OnboardingFrame at="show" title="Create your exhibition" lead="Where and when people can see your work in person. Skip it if there's no show yet." onSkip={() => setWelcome("done")}>
-          <div style={{ marginTop: 22 }}>
-            <ShowForm
-              mode="exhibition"
-              works={rows}
-              existing={null}
-              onSubmit={async (fields) => {
-                const result = await saveShow(fields, null);
-                if (!result.error) setWelcome("done");
-                return result;
-              }}
-            />
-          </div>
-        </OnboardingFrame>
-      )}
-      {welcome === "done" && <WelcomeDone artist={artist} onFinish={finishWelcome} />}
 
       {sheet === "profile" && (
         <Sheet title="Edit your details" onClose={() => setSheet(null)}>
@@ -1237,7 +1172,7 @@ function ArtistPage({
           <LinksEditor artistId={artist.id} rows={linkRows} setRows={setLinkRows} />
         </Sheet>
       )}
-      {sheet === "compose" && <WorkComposer artistSlug={artist.slug} shows={showRows} onClose={() => setSheet(null)} onSubmit={addWork} />}
+      {sheet === "compose" && <WorkComposer artistSlug={artist.slug} shows={EXHIBITIONS_OPEN ? showRows : collections} onClose={() => setSheet(null)} onSubmit={addWork} />}
       {sheet && typeof sheet === "object" && "newShow" in sheet && (
         <Sheet title={sheet.newShow === "exhibition" ? "New exhibition" : "New collection"} onClose={() => setSheet(null)}>
           <ShowForm mode={sheet.newShow} works={rows} existing={null} onSubmit={(fields) => saveShow(fields, null)} />
@@ -3165,21 +3100,6 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "left",
     color: "#fff",
     background: "rgba(255,255,255,.08)",
-    border: 0,
-    cursor: "pointer",
-  },
-  makePink: {
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 22,
-    minHeight: 116,
-    padding: 16,
-    borderRadius: 18,
-    textAlign: "left",
-    color: "#fff",
-    background: "#B63878",
     border: 0,
     cursor: "pointer",
   },

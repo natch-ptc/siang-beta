@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { artistColumns, showColumns, withFallback, workColumns } from "@/lib/queries";
 import StudioClient, { type WelcomeStep, type StudioArtist, type StudioArtwork, type StudioContact, type StudioExhibition, type StudioLink } from "@/components/StudioClient";
 
-const STEPS: WelcomeStep[] = ["profile", "work", "show", "done"];
+const STEPS: WelcomeStep[] = ["ready", "tour"];
 
 export default async function StudioPage({ searchParams }: { searchParams: Promise<{ welcome?: string | string[] }> }) {
   const { welcome } = await searchParams;

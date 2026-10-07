@@ -5,15 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { EYE_ICON, EYE_SLASH_ICON } from "@/lib/icons";
-import { OnboardingFrame, ob } from "@/components/Onboarding";
+import { Intro, OnboardingFrame, Splash, ob } from "@/components/Onboarding";
 import Spinner from "@/components/Spinner";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// The first step of joining: who you are. One screen, then straight on to
-// your link; no waitlist, and no second form asking for the email again.
+// Joining: the Siang mark fades up, one screen says what Siang is, then the
+// first of two short steps (who you are). No waitlist, and no second form
+// asking for the email again. Someone arriving with their email already in
+// the link has seen the pitch, so they go straight to the form.
 export default function JoinClient({ initialEmail }: { initialEmail: string }) {
   const router = useRouter();
+  const [stage, setStage] = useState<"splash" | "intro" | "form">(initialEmail ? "form" : "splash");
   const [name, setName] = useState("");
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
@@ -69,10 +72,12 @@ export default function JoinClient({ initialEmail }: { initialEmail: string }) {
     router.refresh();
   }
 
+  if (stage === "splash") return <Splash onDone={() => setStage("intro")} />;
+  if (stage === "intro") return <Intro onStart={() => setStage("form")} />;
+
   if (confirmTo) {
     return (
       <OnboardingFrame
-        at="link"
         title="Check your email"
         lead={`We sent a link to ${confirmTo}. Open it, and you'll carry on with your Siang link right where you left off.`}
       >
@@ -88,9 +93,9 @@ export default function JoinClient({ initialEmail }: { initialEmail: string }) {
 
   return (
     <OnboardingFrame
-      at="link"
-      title="Join the Siang beta"
-      lead="Make your artist page, with your works and your own voice. It takes a few minutes, and every step after this one can be skipped."
+      step={1}
+      title="Create your account"
+      lead="Two short steps and your artist page is live. Photos, works and sound can all come later."
     >
       <form onSubmit={submit} style={ob.form} noValidate>
         <label style={ob.label}>

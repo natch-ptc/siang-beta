@@ -1,0 +1,99 @@
+/* A short guided tour over a page: a spotlight on one control at a time and a
+   card that says what it's for. The spotlight is a box whose huge shadow dims
+   everything else, so it can glide from one target to the next. */
+
+.catch {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+.spot {
+  position: fixed;
+  z-index: 71;
+  border-radius: 16px;
+  box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.74);
+  pointer-events: none;
+  transition: top 360ms var(--ease), left 360ms var(--ease), width 360ms var(--ease), height 360ms var(--ease), opacity 240ms ease-out;
+}
+.spot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+  animation: ring 1.8s ease-in-out infinite;
+}
+@keyframes ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 0 0 0 rgba(255, 255, 255, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 0 0 9px rgba(255, 255, 255, 0);
+  }
+}
+
+.card {
+  position: fixed;
+  z-index: 72;
+  width: min(340px, calc(100vw - 32px));
+  padding: 18px 18px 14px;
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--on-paper);
+  transition: top 360ms var(--ease), left 360ms var(--ease);
+  animation: cardIn 320ms var(--ease) 160ms both;
+}
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.count {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(0, 0, 0, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+.title {
+  margin-top: 6px;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.text {
+  margin-top: 6px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.66);
+}
+.acts {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.skip {
+  min-height: 44px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.next {
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: #0f0f0f;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  transition: transform var(--press-dur) var(--ease);
+}
+.next:active {
+  transform: var(--press);
+}

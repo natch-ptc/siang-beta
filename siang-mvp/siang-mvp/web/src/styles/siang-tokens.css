@@ -1,73 +1,38 @@
 /* ============================================================
-   Siang design system tokens — LANDING PAGE ONLY.
-   Values copied verbatim from the authoritative design-system
-   export (tokens/colors.css, typography.css, spacing.css).
-   Scoped under `.siang` so nothing leaks into /mvp, /studio,
-   /login, /claim-your-link, which keep their own --ink/--hair
-   tokens defined in globals.css.
+   Siang design system tokens for the web pages (landing, beta
+   signup, claim-your-link), scoped under `.siang`.
+
+   Values follow the "Siang Design System" export (Draft 1 deck):
+   monochrome — black, white and off-white only; all colour comes
+   from the artwork. Outfit for Latin, Prompt for Thai (both loaded
+   in app/layout.tsx). The earlier magenta + Satoshi system is gone.
    ============================================================ */
 
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap");
-
-@font-face {
-  font-family: "Satoshi";
-  font-style: normal;
-  font-weight: 300 900;
-  font-display: swap;
-  src: url("/fonts/Satoshi-Variable.ttf") format("truetype-variations"),
-       url("/fonts/Satoshi-Variable.ttf") format("truetype");
-}
-@font-face {
-  font-family: "Satoshi";
-  font-style: italic;
-  font-weight: 300 900;
-  font-display: swap;
-  src: url("/fonts/Satoshi-VariableItalic.ttf") format("truetype-variations"),
-       url("/fonts/Satoshi-VariableItalic.ttf") format("truetype");
-}
-@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 300; font-display: swap; src: url("/fonts/Satoshi-Light.otf") format("opentype"); }
-@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/Satoshi-Regular.otf") format("opentype"); }
-@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 500; font-display: swap; src: url("/fonts/Satoshi-Medium.otf") format("opentype"); }
-@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 700; font-display: swap; src: url("/fonts/Satoshi-Bold.otf") format("opentype"); }
-@font-face { font-family: "Satoshi Static"; font-style: normal; font-weight: 900; font-display: swap; src: url("/fonts/Satoshi-Black.otf") format("opentype"); }
-@font-face { font-family: "Satoshi Static"; font-style: italic; font-weight: 400; font-display: swap; src: url("/fonts/Satoshi-Italic.otf") format("opentype"); }
-@font-face { font-family: "Satoshi Static"; font-style: italic; font-weight: 500; font-display: swap; src: url("/fonts/Satoshi-MediumItalic.otf") format("opentype"); }
-@font-face { font-family: "Satoshi Static"; font-style: italic; font-weight: 700; font-display: swap; src: url("/fonts/Satoshi-BoldItalic.otf") format("opentype"); }
-
 .siang {
-  /* ── Magenta ─────────────────────────────────────────── */
-  --magenta:        #C2397C;
-  --magenta-deep:   #A62F67;
-  --pink-pale:      #FBE3EE;
-  --pink-on-mag:    #FBDCEA;
-
-  /* ── Light ───────────────────────────────────────────── */
-  --paper:          #EDEDE8;
+  /* ── Light (the web) ─────────────────────────────────── */
+  --paper:          #F5F5F5;
   --white:          #FFFFFF;
-  --ink:            #111111;
+  --ink:            #0D0D0D;
   --ink-muted:      #6B6B6B;
-  --line-light:     rgba(0, 0, 0, 0.14);
+  --line-light:     #D4D4D4;
 
   /* ── Dark ────────────────────────────────────────────── */
   --black:          #000000;
-  --raised:         #161616;
+  --raised:         #1E1E1E;
   --on-black:       #FFFFFF;
-  --on-black-muted: #8A8A8A;
+  --on-black-muted: #9A9A9A;
 
-  --shadow-stack: 0 8px 24px -12px rgba(0, 0, 0, 0.28);
-  --shadow-sheet: 0 -8px 32px -16px rgba(0, 0, 0, 0.32);
-  --scrim: rgba(0, 0, 0, 0.45);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --danger: #C2372B;
 
   /* ── Radius ──────────────────────────────────────────── */
   --radius-card:  16px;
-  --radius-panel: 24px;
+  --radius-panel: 22px;
   --radius-sheet: 28px;
   --radius-work:  14px;
   --radius-pill:  999px;
 
-  --art-gradient: linear-gradient(180deg, var(--magenta) 0%, var(--magenta-deep) 100%);
-
-  /* ── Motion ──────────────────────────────────────────── */
+  /* ── Motion: quiet, 120–320ms fades ──────────────────── */
   --ease-out:  cubic-bezier(0.22, 0.61, 0.36, 1.00);
   --ease-soft: cubic-bezier(0.32, 0.72, 0.24, 1.00);
   --dur-1: 120ms;
@@ -75,35 +40,36 @@
   --dur-3: 320ms;
 
   /* ── Type ────────────────────────────────────────────── */
-  --font: "Satoshi", "Satoshi Static", "IBM Plex Sans Thai", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-thai: "IBM Plex Sans Thai", "Noto Sans Thai", "Satoshi", sans-serif;
+  /* One stack: Thai falls through to Prompt, so mixed lines need no markup. */
+  --font: "Outfit", "Prompt", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-thai: "Prompt", "Outfit", sans-serif;
 
   --w-regular: 400;
   --w-medium:  500;
-  --w-bold:    700;
-  --w-black:   900;
+  --w-bold:    600; /* the system's heaviest text weight is semibold */
+  --w-black:   700;
 
   --fs-display:    72px;
   --fs-display-sm: 40px;
   --fs-h1:         44px;
   --fs-h1-sm:      30px;
-  --fs-h2:         30px;
+  --fs-h2:         22px;
   --fs-card:       20px;
   --fs-card-sm:    18px;
   --fs-body:       17px;
   --fs-small:      15px;
   --fs-caption:    13px;
-  --fs-button:     16px;
+  --fs-button:     15px;
 
-  --lh-display: 1.0;
+  --lh-display: 1.05;
   --lh-h1:      1.1;
   --lh-h2:      1.15;
-  --lh-card:    1.25;
-  --lh-body:    1.55;
-  --lh-thai:    1.7;
+  --lh-card:    1.2;
+  --lh-body:    1.5;
+  --lh-thai:    1.65;
 
   --ls-display: -0.03em;
-  --ls-h1:      -0.02em;
+  --ls-h1:      -0.01em;
   --ls-normal:  0em;
 
   /* ── Spacing / containers / controls ──────────────────── */
@@ -112,14 +78,14 @@
   --space-9: 56px;  --space-10: 72px; --space-11: 96px;
 
   --container:        1200px;
-  --container-pad:      32px;
+  --container-pad:      40px;
   --container-pad-sm:   20px;
   --measure:           680px;
 
   --hit-min:  44px;
-  --chip-h:   46px;
+  --chip-h:   36px;
   --chip-pad-x: 20px;
-  --button-h: 52px;
+  --button-h: 48px;
   --nav-h:    72px;
 
   background: var(--paper);
