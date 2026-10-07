@@ -5,5 +5,5 @@ export const metadata: Metadata = { title: "Exhibitions · Siang.co" };
 
 // The Place tab: exhibitions on now, closing soonest first.
 export default function Page() {
-  return <TabPage tab="exhibitions" set="registered" />;
+  return <TabPage tab="exhibitions" />;
 }

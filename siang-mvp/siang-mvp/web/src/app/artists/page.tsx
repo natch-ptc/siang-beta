@@ -5,5 +5,5 @@ export const metadata: Metadata = { title: "Artists · Siang.co" };
 
 // The Artist tab.
 export default function Page() {
-  return <TabPage tab="artists" set="registered" />;
+  return <TabPage tab="artists" />;
 }

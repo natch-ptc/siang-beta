@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ART_TYPES, artTypeOf, type ArtType } from "@/lib/art-types";
+import { OFFICIAL_PATH } from "@/lib/beta";
 import { ALL_CHIP, ART_TYPE_ICON } from "@/lib/icons";
 import type { Artist } from "@/lib/types";
 import AppHeader, { matches } from "./AppHeader";
@@ -11,7 +12,7 @@ import styles from "./app.module.css";
 
 // The Art tab ("Exploring"): every published work, newest first, filtered by
 // the artist's main art type.
-export default function ExploreScreen({ artists, base = "" }: { artists: Artist[]; base?: string }) {
+export default function ExploreScreen({ artists }: { artists: Artist[] }) {
   const [type, setType] = useState<ArtType | null>(null);
   const [query, setQuery] = useState("");
 
@@ -29,7 +30,7 @@ export default function ExploreScreen({ artists, base = "" }: { artists: Artist[
 
   return (
     <>
-      <AppHeader base={base} query={query} onQuery={setQuery} placeholder="Search works and artists" />
+      <AppHeader query={query} onQuery={setQuery} placeholder="Search works and artists" />
       {types.length > 1 && (
         <div className={styles.chips} role="group" aria-label="Art type">
           <button className={`${styles.chip} ${type === null ? styles.chipOn : ""}`} onClick={() => setType(null)} aria-pressed={type === null} type="button">
@@ -62,11 +63,9 @@ export default function ExploreScreen({ artists, base = "" }: { artists: Artist[
             <Link href="/join" className={styles.btn}>
               Create your profile
             </Link>
-            {!base && (
-              <Link href="/demo" className={styles.btnGhost}>
-                See the demo
-              </Link>
-            )}
+            <Link href={OFFICIAL_PATH} className={styles.btnGhost}>
+              See an example
+            </Link>
           </div>
         </div>
       )}

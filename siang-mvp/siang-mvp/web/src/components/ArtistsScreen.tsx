@@ -30,7 +30,7 @@ const COMPARE: Record<Sort, (a: Artist, b: Artist) => number> = {
 };
 
 // The Artist tab ("Hot Artist!"): each artist with a strip of their works.
-export default function ArtistsScreen({ artists, base = "" }: { artists: Artist[]; base?: string }) {
+export default function ArtistsScreen({ artists }: { artists: Artist[] }) {
   const [sort, setSort] = useState<Sort>("hot");
   const [query, setQuery] = useState("");
 
@@ -41,7 +41,7 @@ export default function ArtistsScreen({ artists, base = "" }: { artists: Artist[
 
   return (
     <>
-      <AppHeader base={base} query={query} onQuery={setQuery} placeholder="Search artists" />
+      <AppHeader query={query} onQuery={setQuery} placeholder="Search artists" />
       <div className={styles.chips} role="group" aria-label="Order">
         {SORTS.map((s) => (
           <button key={s.id} className={`${styles.chip} ${sort === s.id ? styles.chipOn : ""}`} onClick={() => setSort(s.id)} aria-pressed={sort === s.id} type="button">

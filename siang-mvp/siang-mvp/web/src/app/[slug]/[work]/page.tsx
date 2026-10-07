@@ -10,6 +10,7 @@ import ShareButton from "@/components/ShareButton";
 import ViewBeacon from "@/components/ViewBeacon";
 import PageTransition, { BACK, Morph } from "@/components/PageTransition";
 import WavePlayer from "@/components/WavePlayer";
+import { isOfficial } from "@/lib/beta";
 import { loadArtist, loadOwnSlug } from "@/lib/load";
 import { todayInThailand } from "@/lib/format";
 import { CLOSE_BIG } from "@/lib/icons";
@@ -130,7 +131,10 @@ export default async function WorkPage({ params }: Props) {
       <article className={styles.page}>
         <Header artist={artist} />
 
-        <h1 className={styles.title}>{work.title}</h1>
+        <h1 className={styles.title}>
+          {isOfficial(artist.slug) && <span className={app.exampleTag}>Example</span>}
+          {work.title}
+        </h1>
         {work.titleEn && <p className={styles.sub}>{work.titleEn}</p>}
         {work.coverUrl ? (
           <Morph name={`work-${work.dbId}`}>
@@ -143,7 +147,7 @@ export default async function WorkPage({ params }: Props) {
 
         {/* A work with no sound still looks finished: the picture and the text lead (PRD 10). */}
         {track && <WavePlayer track={track} seed={work.code} />}
-        {work.soundCredit && <p className={styles.credit}>Example sound for the demo: {work.soundCredit}</p>}
+        {isOfficial(artist.slug) && <p className={styles.credit}>An example made by the Siang team, not a work for sale. Sources are under Credits.</p>}
         {work.description && <p className={styles.story}>{work.description}</p>}
 
         {work.images.length > 0 && (

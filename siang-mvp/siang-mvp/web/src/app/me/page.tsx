@@ -23,7 +23,7 @@ export default async function ProfileTab() {
   let artists: Artist[] = [];
   if (!artist) {
     try {
-      artists = [...(await fetchArtists(supabase, "registered")), ...(await fetchArtists(supabase, "examples"))];
+      artists = await fetchArtists(supabase);
     } catch (error) {
       console.error("fetchArtists failed", error); // the lists below stay empty; the rest of the tab still works
     }
