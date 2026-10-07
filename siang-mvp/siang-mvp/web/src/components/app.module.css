@@ -1,0 +1,593 @@
+/* The app shell and the cards shared by the three tabs (Draft-1 design):
+   a phone-width column, the logo bar, a row of filter chips, and the white
+   pill tab bar floating at the bottom. */
+
+.app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: var(--column);
+  margin: 0 auto;
+  padding: calc(18px + env(safe-area-inset-top)) 0 calc(132px + env(safe-area-inset-bottom));
+}
+/* Pages without the tab bar need less room at the bottom. */
+.appBare {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 12px 0 var(--gutter);
+}
+.logoLink {
+  display: inline-flex;
+  text-decoration: none;
+}
+.topActs {
+  display: flex;
+  align-items: center;
+}
+.iconBtn {
+  width: var(--hit);
+  height: var(--hit);
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--fg);
+  text-decoration: none;
+  transition: transform var(--press-dur) var(--ease), background var(--press-dur) var(--ease);
+}
+.iconBtn:active {
+  transform: var(--press);
+  background: var(--surface);
+}
+/* Works on Siang's own page are examples made by the team (lib/beta.ts). */
+.exampleTag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--on-paper);
+  font-family: var(--font);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+.exampleNote {
+  margin: 12px var(--gutter) 0;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+.exampleNote b {
+  color: var(--fg);
+  font-weight: 500;
+}
+.exampleNote a {
+  color: var(--fg);
+  text-underline-offset: 3px;
+}
+
+/* ── Search ─────────────────────────────────────────────── */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px var(--gutter) 0;
+  height: 46px;
+  padding: 0 6px 0 16px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--fg-soft);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px; /* 16px keeps iOS from zooming the page on focus */
+}
+.search input::placeholder {
+  color: var(--fg-faint);
+}
+
+/* ── Chips: the underlined filter row under the logo ────── */
+.chips {
+  display: flex;
+  gap: 0;
+  margin-top: 14px;
+  padding: 0 calc(var(--gutter) - 5px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar {
+  display: none;
+}
+.chip {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--hit);
+  padding: 0 5px;
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--fg);
+  text-decoration: none;
+}
+.chip::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transition: transform 220ms var(--ease);
+}
+.chipOn::after {
+  transform: scaleX(1);
+}
+
+/* ── Exploring: two columns of work cards ───────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 14px 10px 0;
+}
+.card {
+  position: relative;
+  aspect-ratio: 211 / 303;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--surface);
+  color: #fff;
+  isolation: isolate;
+}
+.cardImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+/* Shade at the top and bottom so the name and title read on any picture. */
+.shade::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.46) 0%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.66) 100%);
+}
+/* The whole card opens the work; the sound button sits above this link. */
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+.by {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 48px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.avatar {
+  flex: none;
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--surface-hi) center/cover no-repeat;
+}
+.mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 500;
+  line-height: 1;
+}
+.byText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.byName {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.byHandle {
+  font-size: 10px;
+  opacity: 0.82;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cardTitle {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  font-family: var(--font-thai);
+  font-size: 13.5px;
+  line-height: 1.32;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/* The round waveform button: tap to hear the work without leaving the list. */
+.sound {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: var(--hit);
+  height: var(--hit);
+  display: grid;
+  place-items: center;
+}
+.sound span {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(28, 28, 28, 0.42);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: transform var(--press-dur) var(--ease), background var(--press-dur) var(--ease);
+}
+.sound:active span {
+  transform: var(--press);
+}
+.soundOn span {
+  background: var(--paper);
+  color: var(--on-paper);
+}
+
+/* ── Exhibition: wide cards ─────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px var(--gutter) 0;
+}
+.show {
+  position: relative;
+  display: block;
+  aspect-ratio: 354 / 221;
+  border-radius: var(--radius-tile);
+  overflow: hidden;
+  background: var(--surface);
+  color: #fff;
+  text-decoration: none;
+  isolation: isolate;
+}
+.show .by {
+  top: 16px;
+  left: 16px;
+  right: 50%;
+}
+.showMeta {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  max-width: 48%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: right;
+}
+.showMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.showTitle {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 16px;
+  font-family: var(--font-thai);
+  font-size: 15px;
+  line-height: 1.3;
+  max-width: 78%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--on-paper);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+/* ── Hot Artist!: one row of works per artist ───────────── */
+.artists {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 18px;
+}
+.artistHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--gutter) 0 calc(var(--gutter) - 2px);
+}
+.artistWho {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+}
+.artistWho .byName {
+  font-size: 15px;
+}
+.artistWho .byHandle {
+  font-size: 10.5px;
+  color: var(--fg-soft);
+}
+.follow {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px 0 10px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--on-paper);
+  font-size: 11.5px;
+  font-weight: 600;
+  transition: transform var(--press-dur) var(--ease), background var(--press-dur) var(--ease);
+}
+.follow:active {
+  transform: var(--press);
+}
+/* Bigger tap area than the pill looks. */
+.follow::before {
+  content: "";
+  position: absolute;
+  inset: -8px -4px;
+}
+.following {
+  background: none;
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.strip {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 0 calc(var(--gutter) - 8px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: calc(var(--gutter) - 8px);
+}
+.strip::-webkit-scrollbar {
+  display: none;
+}
+/* A tile is as wide as its picture: tall works are narrow, wide works are wide. */
+.stripTile {
+  position: relative;
+  flex: none;
+  height: 150px;
+  min-width: 112px;
+  max-width: 250px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--surface);
+  color: #fff;
+  text-decoration: none;
+  scroll-snap-align: start;
+  isolation: isolate;
+}
+.stripTile img {
+  display: block;
+  height: 100%;
+  width: auto;
+  min-width: 100%;
+  object-fit: cover;
+}
+.stripTile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 46%);
+}
+.tileText {
+  position: absolute;
+  top: 10px;
+  left: 11px;
+  right: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tileTitle {
+  font-family: var(--font-thai);
+  font-size: 12px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.tileDate {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* ── Empty states ───────────────────────────────────────── */
+.empty {
+  padding: 72px 32px 0;
+  text-align: center;
+}
+.empty h2 {
+  font-size: 20px;
+  font-weight: 500;
+}
+.empty p {
+  margin-top: 8px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+.emptyActs {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* ── Buttons ────────────────────────────────────────────── */
+.btn,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform var(--press-dur) var(--ease), background var(--press-dur) var(--ease);
+}
+.btn {
+  background: var(--paper);
+  color: var(--on-paper);
+}
+.btnGhost {
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.btn:active,
+.btnGhost:active {
+  transform: var(--press);
+}
+.btn:disabled,
+.btnGhost:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Tab bar ────────────────────────────────────────────── */
+.tabbar {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(340px, calc(100% - 44px));
+  height: 78px;
+  padding: 0 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--on-paper);
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.7);
+}
+.tab {
+  width: 62px;
+  height: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 10px;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 200ms var(--ease), transform var(--press-dur) var(--ease);
+}
+.tab:active {
+  transform: var(--press);
+}
+.tabOn {
+  background: var(--paper-press);
+}
+
+/* Small phones (iPhone SE, mini): keep a five-chip row on one screen. */
+@media (max-width: 385px) {
+  .chip {
+    font-size: 12.5px;
+    padding: 0 4px;
+  }
+  .chip::after {
+    left: 4px;
+    right: 4px;
+  }
+}
+
+/* "Coming soon" label over a section that is built but not open yet. */
+.soonTag {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 11px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-soft);
+}

@@ -1,9 +1,12 @@
-import LoginClient, { type LoginMode } from "./LoginClient";
+import { redirect } from "next/navigation";
+import LoginClient from "./LoginClient";
 
-// /login?mode=signup&email=… opens straight on "Create your studio" with the
-// email filled in (the beta signup page links here).
+// Sign in. Making an account is at /join (the old /login?mode=signup links
+// still lead there, email and all). ?confirmed=1 comes from an email
+// confirmation link that couldn't sign the person in by itself.
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  const { mode, email } = await searchParams;
-  const initialMode: LoginMode = mode === "signup" ? "signup" : "signin";
-  return <LoginClient initialMode={initialMode} initialEmail={typeof email === "string" ? email : ""} />;
+  const { mode, email, confirmed } = await searchParams;
+  const e = typeof email === "string" ? email : "";
+  if (mode === "signup") redirect(e ? `/join?email=${encodeURIComponent(e)}` : "/join");
+  return <LoginClient initialEmail={e} confirmed={confirmed === "1"} />;
 }

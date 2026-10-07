@@ -1,0 +1,476 @@
+/* A work's page (Draft-1 "Siang artist": who made it, the title, the picture,
+   the sound as a waveform, then the story) and an exhibition's page. Dark, a
+   large play button, everything within thumb reach (PRD 6.11). */
+
+.page {
+  padding: 6px var(--gutter) 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.whoText {
+  min-width: 0;
+}
+.whoName {
+  display: block;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.whoHandle {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--fg-soft);
+}
+.close {
+  width: var(--hit);
+  height: var(--hit);
+  flex: none;
+  margin-right: -8px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.title {
+  margin-top: 24px;
+  font-family: var(--font-thai);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.sub {
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: var(--fg-soft);
+}
+
+.art {
+  display: block;
+  width: calc(100% + 20px);
+  max-height: 72dvh;
+  margin: 14px -10px 0;
+  border-radius: var(--radius-art);
+  object-fit: cover;
+  background: var(--surface);
+}
+.artBlank {
+  aspect-ratio: 5 / 4;
+}
+
+/* ── The player: play, the waveform, the time ───────────── */
+.player {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 26px;
+}
+.play {
+  width: 60px;
+  height: 60px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  transition: transform var(--press-dur) var(--ease), background var(--press-dur) var(--ease);
+}
+.play:active {
+  transform: var(--press);
+  background: var(--surface);
+}
+.wave {
+  flex: 1;
+  max-width: 190px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  touch-action: none;
+}
+.wave i {
+  width: 3px;
+  border-radius: 3px;
+  background: var(--fg);
+  opacity: 0.38;
+  transition: opacity 120ms linear;
+}
+.wave i.heard {
+  opacity: 1;
+}
+.time {
+  width: 46px;
+  flex: none;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-soft);
+}
+.hint {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--fg-faint);
+}
+
+.credit {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fg-faint);
+  overflow-wrap: anywhere;
+}
+
+.story {
+  margin-top: 30px;
+  font-family: var(--font-thai);
+  font-size: 21px;
+  font-weight: 300;
+  line-height: 1.55;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* More pictures of the work, after the story. */
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 26px -10px 0;
+}
+.gallery img {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-tile);
+  background: var(--surface);
+}
+
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 28px;
+}
+
+/* ── Details: year, medium, size against a human figure ─── */
+.facts {
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+}
+.fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+}
+.fact dt {
+  flex: none;
+  color: var(--fg-soft);
+}
+.fact dd {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.scale {
+  display: block;
+  width: 100%;
+  height: 150px;
+  margin-top: 18px;
+  color: var(--fg);
+}
+.scaleNote {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+
+.section {
+  margin-top: 36px;
+}
+.section > h2 {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* The strip of other works bleeds to the screen edges. */
+.bleed {
+  margin: 0 calc(var(--gutter) * -1);
+}
+.foot {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.cta > * {
+  flex: 1;
+}
+
+/* ── Exhibition page ────────────────────────────────────── */
+.cover {
+  position: relative;
+  display: block;
+  width: calc(100% + 20px);
+  aspect-ratio: 354 / 221;
+  margin: 18px -10px 0;
+  border-radius: var(--radius-art);
+  object-fit: cover;
+  background: var(--surface);
+}
+.kicker {
+  margin-top: 22px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-soft);
+}
+.showTitle {
+  margin-top: 6px;
+  font-family: var(--font-thai);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.info {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.infoRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+  text-decoration: none;
+}
+.infoRow svg {
+  flex: none;
+  color: var(--fg-soft);
+}
+.infoRow span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.infoRow em {
+  flex: none;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--on-paper);
+}
+
+/* The work list: number, small picture, title, sound (PRD 6.10). */
+.works {
+  display: flex;
+  flex-direction: column;
+}
+.workRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 8px 44px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.workRow > a {
+  position: absolute;
+  inset: 0;
+}
+.num {
+  width: 24px;
+  flex: none;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-soft);
+}
+.thumb {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface-hi) center/cover no-repeat;
+}
+.workText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.workText b {
+  font-family: var(--font-thai);
+  font-size: 15.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.workText span {
+  font-size: 12.5px;
+  color: var(--fg-soft);
+}
+/* Reuses the card's sound button, centred on the row's right edge. */
+.workRow > button {
+  top: 50%;
+  right: -8px;
+  transform: translateY(-50%);
+}
+
+/* ── Keypad (siang.co/w) ────────────────────────────────── */
+.pad {
+  padding: 18px var(--gutter) 0;
+  text-align: center;
+}
+.padTitle {
+  font-size: 22px;
+  font-weight: 500;
+}
+.padLead {
+  margin-top: 8px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+.digits {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 26px;
+}
+.digit {
+  width: 42px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 26px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.digit:nth-child(4) {
+  margin-left: 10px;
+}
+.digitNext {
+  box-shadow: inset 0 0 0 1.5px var(--fg);
+}
+.padMsg {
+  min-height: 42px;
+  margin-top: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--danger);
+}
+.keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 320px;
+  margin: 6px auto 0;
+}
+.key {
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--surface);
+  font-size: 26px;
+  font-weight: 400;
+  transition: transform var(--press-dur) var(--ease), background var(--press-dur) var(--ease);
+}
+.key:active {
+  transform: var(--press);
+  background: var(--surface-hi);
+}
+.keyQuiet {
+  background: none;
+}
+.padActs {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.camera {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+.camera video {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  object-fit: cover;
+}
+.cameraBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px var(--gutter) calc(18px + env(safe-area-inset-bottom));
+  font-size: 14.5px;
+  color: var(--fg-soft);
+}
+.frame {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(62vw, 260px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 28px;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 100vmax rgba(0, 0, 0, 0.36);
+  pointer-events: none;
+}

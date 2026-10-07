@@ -1,0 +1,283 @@
+/* Motion for the join flow. Quiet: short fades and small rises, staggered so a
+   screen settles from top to bottom. globals.css turns it all off for people
+   who ask for reduced motion. */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes markIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes leave {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* Children of a frame's body come in one after another. */
+.stagger > * {
+  animation: rise 420ms var(--ease) both;
+}
+.stagger > :nth-child(1) {
+  animation-delay: 40ms;
+}
+.stagger > :nth-child(2) {
+  animation-delay: 110ms;
+}
+.stagger > :nth-child(3) {
+  animation-delay: 180ms;
+}
+.stagger > :nth-child(4) {
+  animation-delay: 250ms;
+}
+.stagger > :nth-child(5) {
+  animation-delay: 320ms;
+}
+.stagger > :nth-child(n + 6) {
+  animation-delay: 390ms;
+}
+
+/* ── Progress: two short bars ───────────────────────────── */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.bars {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+}
+.barTrack {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #fff;
+}
+.barFillNew {
+  transform-origin: left;
+  animation: grow 520ms var(--ease) 120ms both;
+}
+.progressLabel {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Splash: the mark fades up, then the screen fades out ── */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 62;
+  max-width: 520px;
+  margin: 0 auto;
+  background: #0f0f0f;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.splashInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.splashMark {
+  animation: markIn 900ms var(--ease) both;
+}
+.splashLine {
+  font-family: var(--font-thai);
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.6);
+  animation: fade 700ms ease-out 500ms both;
+}
+.leaving {
+  animation: leave 320ms ease-in both;
+}
+
+/* ── Intro: what Siang is ───────────────────────────────── */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 61;
+  max-width: 520px;
+  margin: 0 auto;
+  background: #0f0f0f;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: calc(18px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  animation: fade 320ms ease-out both;
+}
+.introHead {
+  margin-top: 56px;
+}
+.introTitle {
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.introLead {
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.66);
+  max-width: 30em;
+}
+.points {
+  list-style: none;
+  margin-top: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.point {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.pointIcon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 14px;
+  background: #1b1b1b;
+  display: grid;
+  place-items: center;
+}
+.point b {
+  display: block;
+  font-size: 15.5px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.point span {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+}
+.introActs {
+  margin-top: auto;
+  padding-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Checkpoint: what you have now ──────────────────────── */
+.have {
+  list-style: none;
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.have li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 0;
+  font-size: 15px;
+  line-height: 1.45;
+  animation: rise 380ms var(--ease) both;
+}
+.have li:nth-child(1) {
+  animation-delay: 380ms;
+}
+.have li:nth-child(2) {
+  animation-delay: 520ms;
+}
+.have li:nth-child(3) {
+  animation-delay: 660ms;
+}
+.have li:nth-child(4) {
+  animation-delay: 800ms;
+}
+.have small {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.tick,
+.later {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+}
+.tick {
+  background: #fff;
+  color: #0f0f0f;
+  animation: pop 320ms var(--ease) both;
+  animation-delay: inherit;
+}
+.later {
+  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+}
+.haveLater {
+  color: rgba(255, 255, 255, 0.66);
+}
+.haveHead {
+  margin-top: 26px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+.haveHead + .have {
+  margin-top: 6px;
+}
+
+/* The intro's points follow its headline. */
+.points.stagger > :nth-child(1) {
+  animation-delay: 260ms;
+}
+.points.stagger > :nth-child(2) {
+  animation-delay: 360ms;
+}
+.points.stagger > :nth-child(3) {
+  animation-delay: 460ms;
+}
+.introActs {
+  animation: fade 420ms ease-out 620ms both;
+}

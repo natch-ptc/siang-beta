@@ -1,17 +1,23 @@
 import { stamp } from "@/lib/format";
-import type { ArtistCard } from "@/lib/types";
-import styles from "./CardStack.module.css";
+import styles from "./CardFace.module.css";
 
-// Only the fields the face shows, so the Studio can preview a card before it's in the app's data.
-type CardFaceData = Pick<ArtistCard, "cardBg" | "cardInk" | "based" | "country" | "addedAt" | "joinedTz" | "name" | "slug">;
+// Only the fields the face shows, so the Studio can preview a card while it is being edited.
+type CardFaceData = {
+  cardBg: string;
+  cardInk: string;
+  based: string;
+  country: string;
+  addedAt: string;
+  joinedTz: string | null;
+  name: string;
+  slug: string;
+};
 
 export default function CardFace({ card }: { card: CardFaceData }) {
   return (
     <div className={styles.face} style={{ background: card.cardBg, color: card.cardInk }}>
       <div className={styles.foot}>
-        <b>
-          {card.based}, {card.country}
-        </b>
+        <b>{[card.based, card.country].filter(Boolean).join(", ")}</b>
         <span>{stamp(card.addedAt, card.joinedTz)}</span>
       </div>
       <div className={styles.plate}>

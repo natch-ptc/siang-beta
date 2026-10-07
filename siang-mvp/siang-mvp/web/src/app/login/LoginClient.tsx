@@ -5,73 +5,50 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { BACK_CHEVRON_SVG, EYE_ICON, EYE_SLASH_ICON } from "@/lib/icons";
-import { BETA_PATH } from "@/lib/beta";
+import Logo from "@/components/Logo";
 
-export type LoginMode = "signin" | "signup";
-
-// Supabase's raw auth errors, reworded so a first-time visitor knows what to do next.
-function friendlyError(message: string, mode: LoginMode) {
-  if (/invalid login credentials/i.test(message)) return "Wrong email or password. No account yet? Create one below.";
-  if (/already registered/i.test(message)) return "This email already has an account. Sign in instead.";
-  if (/email not confirmed/i.test(message)) return "This account hasn't been confirmed yet. Ask the Siang team to confirm it.";
-  if (/password should be at least/i.test(message)) return "Use a password with at least 6 characters.";
-  return mode === "signup" ? `Couldn't create the account: ${message}` : message;
+// Supabase's raw auth errors, reworded so the person knows what to do next.
+function friendlyError(message: string) {
+  if (/invalid login credentials/i.test(message)) return "Wrong email or password. No account yet? Join the beta below.";
+  if (/email not confirmed/i.test(message)) return "Confirm your email first: open the link we sent you.";
+  return message;
 }
 
-export default function LoginClient({ initialMode, initialEmail }: { initialMode: LoginMode; initialEmail: string }) {
+export default function LoginClient({ initialEmail, confirmed }: { initialEmail: string; confirmed: boolean }) {
   const router = useRouter();
-  const [mode, setMode] = useState<LoginMode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const notice = confirmed ? "Your email is confirmed. Sign in to carry on." : null;
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setNotice(null);
     setBusy(true);
-    const supabase = createClient();
-
-    if (mode === "signup") {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      setBusy(false);
-      if (error) {
-        setError(friendlyError(error.message, mode));
-        if (/already registered/i.test(error.message)) setMode("signin");
-        return;
-      }
-      if (!data.session) {
-        setNotice("Check your email to confirm your account, then sign in.");
-        setMode("signin");
-        return;
-      }
-      router.push("/app");
-      router.refresh();
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await createClient().auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
-      setError(friendlyError(error.message, mode));
+      setError(friendlyError(error.message));
       return;
     }
-    router.push("/app");
+    router.push("/studio");
     router.refresh();
   }
 
   return (
     <main style={styles.page}>
       <div style={styles.card}>
-        <Link href={BETA_PATH} style={styles.back} aria-label="Back to Pocket">
-          {BACK_CHEVRON_SVG}
-        </Link>
-        <h1 style={styles.h1}>{mode === "signin" ? "Sign in" : "Create your studio"}</h1>
+        <div style={styles.top}>
+          <Link href="/" style={styles.back} aria-label="Back to Siang">
+            {BACK_CHEVRON_SVG}
+          </Link>
+          <Logo height={22} />
+        </div>
+        <h1 style={styles.h1}>Sign in</h1>
         <p style={styles.sub}>
-          {mode === "signin" ? "Manage your artist profile and works." : "Set up an account to publish your work on Siang."}
+          Manage your artist profile, works and exhibitions.
         </p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -96,7 +73,7 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -108,27 +85,19 @@ export default function LoginClient({ initialMode, initialEmail }: { initialMode
                 {showPassword ? EYE_SLASH_ICON : EYE_ICON}
               </button>
             </span>
-            {mode === "signup" && <span style={styles.hint}>At least 6 characters.</span>}
           </label>
 
           {error && <p style={styles.error}>{error}</p>}
           {notice && <p style={styles.notice}>{notice}</p>}
 
           <button style={styles.submit} type="submit" disabled={busy}>
-            {busy ? "..." : mode === "signin" ? "Sign in" : "Sign up"}
+            {busy ? "..." : "Sign in"}
           </button>
         </form>
 
-        <button
-          style={styles.toggle}
-          onClick={() => {
-            setMode((m) => (m === "signin" ? "signup" : "signin"));
-            setError(null);
-            setNotice(null);
-          }}
-        >
-          {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
-        </button>
+        <Link href={email ? `/join?email=${encodeURIComponent(email)}` : "/join"} style={styles.toggle}>
+          New here? Join the beta
+        </Link>
       </div>
     </main>
   );
@@ -139,77 +108,79 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: "100dvh",
     display: "grid",
     placeItems: "center",
-    background: "linear-gradient(180deg,#E9E9E7 0%,#E9E9E7 22%,#B8B8B6 100%)",
     padding: 20,
   },
   card: {
     width: "100%",
-    maxWidth: 380,
-    background: "#fff",
-    borderRadius: 20,
-    padding: "28px 24px",
-    boxShadow: "0 20px 60px -20px rgba(0,0,0,.3)",
+    maxWidth: 400,
+    background: "#1b1b1b",
+    borderRadius: 28,
+    padding: "22px 24px 26px",
   },
+  top: { display: "flex", alignItems: "center", justifyContent: "space-between" },
   back: {
     display: "inline-grid",
     placeItems: "center",
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
+    marginLeft: -10,
     borderRadius: 999,
-    background: "rgba(0,0,0,.06)",
-    color: "rgba(0,0,0,.7)",
+    color: "#fff",
     textDecoration: "none",
   },
-  h1: { fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginTop: 14 },
-  sub: { fontSize: 14, color: "rgba(0,0,0,.55)", marginTop: 6, lineHeight: 1.4 },
+  h1: { fontSize: 26, fontWeight: 500, lineHeight: 1.15, marginTop: 18 },
+  sub: { fontSize: 14.5, color: "rgba(255,255,255,.66)", marginTop: 8, lineHeight: 1.5 },
   form: { display: "flex", flexDirection: "column", gap: 14, marginTop: 22 },
-  label: { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,.7)" },
+  label: { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,.7)" },
   input: {
-    height: 44,
-    borderRadius: 10,
-    border: "1px solid rgba(0,0,0,.14)",
-    padding: "0 12px",
-    fontSize: 15,
+    height: 48,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.06)",
+    color: "#fff",
+    padding: "0 14px",
+    fontSize: 16,
     fontFamily: "inherit",
   },
   passwordWrap: { position: "relative", display: "flex" },
-  passwordInput: { flex: 1, minWidth: 0, paddingRight: 44 },
+  passwordInput: { flex: 1, minWidth: 0, paddingRight: 48 },
   eye: {
     position: "absolute",
-    right: 4,
-    top: 4,
-    width: 36,
-    height: 36,
+    right: 2,
+    top: 2,
+    width: 44,
+    height: 44,
     borderRadius: 999,
     border: 0,
     background: "none",
-    color: "rgba(0,0,0,.55)",
+    color: "rgba(255,255,255,.66)",
     display: "grid",
     placeItems: "center",
     cursor: "pointer",
   },
-  hint: { fontSize: 12, fontWeight: 400, color: "rgba(0,0,0,.5)" },
-  error: { fontSize: 13, color: "#B63878", margin: 0 },
-  notice: { fontSize: 13, color: "#1F5340", margin: 0 },
+  hint: { fontSize: 12, fontWeight: 400, color: "rgba(255,255,255,.5)" },
+  error: { fontSize: 13.5, color: "#ff8a8a", margin: 0 },
+  notice: { fontSize: 13.5, color: "#8ee0b8", margin: 0 },
   submit: {
-    height: 46,
+    height: 50,
     borderRadius: 999,
     border: 0,
-    background: "#000",
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: 15,
+    background: "#fff",
+    color: "#0f0f0f",
+    fontWeight: 500,
+    fontSize: 15.5,
     cursor: "pointer",
     marginTop: 4,
   },
   toggle: {
-    marginTop: 18,
+    marginTop: 12,
     width: "100%",
+    minHeight: 44,
     textAlign: "center",
     background: "none",
     border: 0,
-    fontSize: 13,
-    color: "rgba(0,0,0,.6)",
+    fontSize: 14,
+    color: "rgba(255,255,255,.7)",
     cursor: "pointer",
     fontFamily: "inherit",
   },

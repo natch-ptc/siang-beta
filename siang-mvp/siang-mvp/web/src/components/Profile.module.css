@@ -1,0 +1,314 @@
+/* An artist's profile (Draft-1 "Artist profile"): who they are, then four
+   tabs — Art, Exhibition, Collection, About. The Studio edits the same layout. */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px var(--gutter) 0;
+}
+.who {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-size: 27px;
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.005em;
+  overflow-wrap: anywhere;
+}
+.handle {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--fg-soft);
+}
+.headActs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: -10px;
+}
+.edit {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  margin-right: 10px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--on-paper);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  padding: 16px var(--gutter) 0;
+  font-size: 14.5px;
+}
+.contacts a,
+.contacts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.place {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  margin: 2px var(--gutter) 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* ── Art: two small tiles, then a wide one ──────────────── */
+.mosaic {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 14px 12px 0;
+}
+.tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 153 / 198;
+  border-radius: var(--radius-tile);
+  overflow: hidden;
+  background: var(--surface);
+  color: #fff;
+  text-align: left;
+  text-decoration: none;
+  isolation: isolate;
+}
+.mosaic > .tile:nth-child(3n) {
+  grid-column: 1 / -1;
+  aspect-ratio: 318 / 198;
+}
+.tileImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 44%);
+}
+.tileText {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tileTitle {
+  font-family: var(--font-thai);
+  font-size: 13.5px;
+  line-height: 1.28;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.tileDate {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.tileFoot {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  font-size: 11px;
+  font-weight: 500;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.panel {
+  padding: 14px var(--gutter) 0;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.none {
+  padding: 36px 8px;
+  text-align: center;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+
+/* ── About ──────────────────────────────────────────────── */
+.bio {
+  font-family: var(--font-thai);
+  font-size: 18px;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.statement {
+  margin-top: 16px;
+  font-family: var(--font-thai);
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--fg-soft);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.linkSolid {
+  background: var(--paper);
+  color: var(--on-paper);
+  box-shadow: none;
+}
+
+.facts {
+  margin-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+}
+.fact dt {
+  color: var(--fg-soft);
+}
+.fact dd {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 22px;
+}
+.linkBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  transition: transform var(--press-dur) var(--ease);
+}
+.linkBtn:active {
+  transform: var(--press);
+}
+.foot {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+}
+
+/* ── The signed-out Profile tab: "Join Siang Beta" and two buttons ── */
+.join {
+  min-height: calc(100dvh - 260px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--gutter);
+}
+.joinTitle {
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.1;
+  text-align: center;
+}
+.joinActs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 28px;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 26px var(--gutter) 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.lead {
+  padding: 8px var(--gutter) 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+  padding: 10px var(--gutter) 0;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+.rowImg {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface-hi) center/cover no-repeat;
+}
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rowText b {
+  font-family: var(--font-thai);
+  font-size: 15px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowText span {
+  font-size: 12.5px;
+  color: var(--fg-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

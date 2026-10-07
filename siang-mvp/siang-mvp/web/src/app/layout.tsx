@@ -1,4 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import OpeningSplash from "@/components/OpeningSplash";
+import TabBar from "@/components/TabBar";
 import "./globals.css";
 
 // What link previews (LINE, Facebook, Messenger…) show for siang.co. Artist,
@@ -8,8 +10,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.siang.co"),
   title: "Siang.co ศิลปะฟังได้",
-  description: "ฟังเสียงของงานศิลปะ และเรื่องเล่าจากศิลปินเจ้าของผลงาน · Art you can hear, told by the artists who made it.",
+  description: "ฟังเสียงของงานศิลปะ และเรื่องเล่าจากศิลปินเจ้าของผลงาน · Art, artists and places in one place, with sound.",
   openGraph: { siteName: "Siang.co", locale: "th_TH", type: "website" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f0f0f",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -18,12 +25,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* Outfit for the interface, Prompt for Thai, as in the Draft-1 design. */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..900&family=Anuphan:wght@400..600&family=EB+Garamond:ital,wght@0,400..600;1,400..500&family=Noto+Serif+Thai:wght@400..600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300..700&family=Prompt:wght@300;400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <TabBar />
+        <OpeningSplash />
+      </body>
     </html>
   );
 }

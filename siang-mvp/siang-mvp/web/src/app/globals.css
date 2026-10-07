@@ -1,18 +1,36 @@
 @import "tailwindcss";
 
+/* Siang v3 app tokens (design: "Siang [Draft-1]"). The app is dark by default,
+   so the same page works in a dark gallery room (PRD 6.11). The marketing
+   pages (/about, /join-beta, /claim-your-link) keep their own light tokens,
+   scoped under `.siang` in styles/siang-tokens.css. */
 :root {
-  --paper-top: #e9e9e7;
-  --paper-bot: #b8b8b6;
-  --ink: #000000;
-  --ink-soft: rgba(0, 0, 0, 0.46);
-  --hair: rgba(0, 0, 0, 0.14);
-  --ease: cubic-bezier(0.22, 0.9, 0.24, 1);
-  --dur: 520ms;
+  --bg: #0f0f0f;
+  --surface: #1b1b1b;
+  --surface-hi: #272727;
+  --fg: #ffffff;
+  --fg-soft: rgba(255, 255, 255, 0.66);
+  --fg-faint: rgba(255, 255, 255, 0.42);
+  --line: rgba(255, 255, 255, 0.14);
+  --paper: #ffffff; /* the tab bar and primary buttons */
+  --on-paper: #0f0f0f;
+  --paper-press: #e4e4e4;
+  --danger: #ff8a8a;
 
-  --btn-lg: 48px;
-  --btn-icon: 36px;
+  --radius-card: 12px;
+  --radius-tile: 18px;
+  --radius-art: 22px;
+  --radius-sheet: 28px;
+
+  --column: 520px;
+  --gutter: 22px;
   --hit: 44px;
-  --btn-pad-lg: 0 20px;
+
+  --font: "Outfit", "Prompt", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-thai: "Prompt", "Outfit", sans-serif;
+  --font-logo: "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --ease: cubic-bezier(0.22, 0.9, 0.24, 1);
   --press: scale(0.96);
   --press-dur: 160ms;
 }
@@ -29,15 +47,27 @@ body {
   height: 100%;
 }
 
+html {
+  color-scheme: dark;
+  background: var(--bg);
+}
+
 body {
-  font-family: "Figtree", "Anuphan", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  letter-spacing: -0.011em;
-  color: var(--ink);
-  background: linear-gradient(180deg, var(--paper-top) 0%, var(--paper-top) 22%, var(--paper-bot) 100%);
+  font-family: var(--font);
+  color: var(--fg);
+  background: var(--bg);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
+}
+
+:lang(th) {
+  font-family: var(--font-thai);
+}
+
+a {
+  color: inherit;
 }
 
 button {
@@ -50,17 +80,108 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid #000;
+  outline: 2px solid currentColor;
   outline-offset: 3px;
 }
 
-/* Generated artwork SVGs are injected via dangerouslySetInnerHTML, so their
-   sizing can't be reached through a CSS Module's scoped selectors. */
-[data-artw] {
-  display: block;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
-[data-artw] > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+
+/* ── Page transitions (React <ViewTransition>, see components/PageTransition.tsx) ──
+   Tab switches crossfade; going into a work or a show slides forward, closing
+   it slides back; a work's picture morphs from its card into the page. The
+   tab bar stays put throughout. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(.page-fade) {
+  animation: 120ms ease-in both vt-fade reverse;
+}
+::view-transition-new(.page-fade) {
+  animation: 200ms ease-out 60ms both vt-fade, 320ms var(--ease) both vt-rise;
+}
+::view-transition-old(.nav-forward) {
+  --vt-offset: -48px;
+  animation: 140ms ease-in both vt-fade reverse, 360ms var(--ease) both vt-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --vt-offset: 48px;
+  animation: 200ms ease-out 120ms both vt-fade, 360ms var(--ease) both vt-slide;
+}
+::view-transition-old(.nav-back) {
+  --vt-offset: 48px;
+  animation: 140ms ease-in both vt-fade reverse, 360ms var(--ease) both vt-slide reverse;
+}
+::view-transition-new(.nav-back) {
+  --vt-offset: -48px;
+  animation: 200ms ease-out 120ms both vt-fade, 360ms var(--ease) both vt-slide;
+}
+::view-transition-group(.morph) {
+  animation-duration: 380ms;
+  animation-timing-function: var(--ease);
+}
+::view-transition-image-pair(.morph) {
+  animation-name: vt-blur;
+}
+::view-transition-group(tab-bar) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(tab-bar) {
+  display: none;
+}
+::view-transition-new(tab-bar) {
+  animation: none;
+}
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-rise {
+  from {
+    transform: translateY(8px);
+  }
+}
+@keyframes vt-slide {
+  from {
+    translate: var(--vt-offset);
+  }
+}
+@keyframes vt-blur {
+  30% {
+    filter: blur(3px);
+  }
+}
+
+/* Form controls follow the dark theme. Inputs and selects are given a white
+   text colour, and the native dropdown list doesn't inherit the dark
+   background, so on Windows the options came out white on white. */
+select,
+input,
+textarea {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background-color: #1b1b1b;
+  color: #ffffff;
+}
+select option:disabled {
+  color: rgba(255, 255, 255, 0.45);
+}
+/* Browser autofill paints its own pale background; keep the field dark. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  -webkit-box-shadow: 0 0 0 1000px #262626 inset;
+  caret-color: #ffffff;
+  transition: background-color 9999s ease-out 0s;
 }
