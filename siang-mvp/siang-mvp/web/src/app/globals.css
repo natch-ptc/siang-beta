@@ -185,3 +185,21 @@ input:-webkit-autofill:focus {
   caret-color: #ffffff;
   transition: background-color 9999s ease-out 0s;
 }
+
+/* A fold-away section (<details class="disclosure">): its own arrow, which
+   turns over when the section is open, in place of the browser's marker. */
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.disclosureCaret {
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.7);
+  transition: rotate 0.2s ease;
+}
+.disclosure[open] > summary .disclosureCaret {
+  rotate: 180deg;
+}
+.disclosure[open] {
+  padding-bottom: 14px;
+}
