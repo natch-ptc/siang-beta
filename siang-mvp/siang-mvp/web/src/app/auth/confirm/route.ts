@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
   else if (tokenHash && type) ok = !(await supabase.auth.verifyOtp({ token_hash: tokenHash, type })).error;
 
   // A link opened twice, or in another browser, can't sign in by itself; the
-  // email is confirmed all the same, so the sign-in page says so.
-  return NextResponse.redirect(new URL(ok ? next : "/login?confirmed=1", url.origin));
+  // email is confirmed all the same, so the sign-in page says so. A "forgot
+  // password" link (LoginClient, next=/login?reset=1) in that state is no use:
+  // the sign-in page offers to send a new one.
+  const failed = next.startsWith("/login?reset") || type === "recovery" ? "/login?reset=failed" : "/login?confirmed=1";
+  return NextResponse.redirect(new URL(ok ? next : failed, url.origin));
 }
