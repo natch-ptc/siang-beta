@@ -32,6 +32,7 @@ import {
   COLLECTION_CHIP,
   ABOUT_CHIP,
   SAVE_ICON,
+  CHEVRON_DOWN_SVG,
   contactIcon,
 } from "@/lib/icons";
 import { ART_TYPES } from "@/lib/art-types";
@@ -2183,8 +2184,11 @@ function DetailFields({ value, onChange }: { value: DetailInputs; onChange: (v: 
         <input style={styles.input} maxLength={120} placeholder="40 x 60 cm" value={value.size} onChange={set("size")} />
       </Field>
 
-      <details style={styles.more}>
-        <summary style={styles.moreSummary}>More details, optional</summary>
+      <details className="disclosure" style={styles.more}>
+        <summary style={styles.moreSummary}>
+          More details, optional
+          <span className="disclosureCaret">{CHEVRON_DOWN_SVG}</span>
+        </summary>
         <div style={{ ...styles.form, marginTop: 12 }}>
           <div style={styles.row3}>
             <Field label="Height, cm">
@@ -2868,8 +2872,18 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   notice: { fontSize: 13.5, lineHeight: 1.45, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,.08)", margin: 0 },
-  more: { borderTop: "1px solid rgba(255,255,255,.1)", borderBottom: "1px solid rgba(255,255,255,.1)", padding: "4px 0" },
-  moreSummary: { minHeight: 44, display: "flex", alignItems: "center", fontSize: 14, fontWeight: 600, cursor: "pointer" },
+  more: { border: "1px solid rgba(255,255,255,.16)", borderRadius: 12, padding: "2px 14px" },
+  moreSummary: {
+    minHeight: 44,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: "pointer",
+    listStyle: "none",
+  },
   thumbRemove: {
     position: "absolute",
     top: -6,
