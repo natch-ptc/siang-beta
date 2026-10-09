@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import OpeningSplash from "@/components/OpeningSplash";
 import TabBar from "@/components/TabBar";
 import "./globals.css";
@@ -35,6 +36,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <TabBar />
         <OpeningSplash />
+        {/* Counts visitors and page views for the Vercel dashboard. No cookies. */}
+        <Analytics />
       </body>
     </html>
   );
