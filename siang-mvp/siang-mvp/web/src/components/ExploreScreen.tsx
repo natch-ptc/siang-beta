@@ -2,50 +2,59 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ART_TYPES, artTypeOf, type ArtType } from "@/lib/art-types";
 import { OFFICIAL_PATH } from "@/lib/beta";
-import { ALL_CHIP, ART_TYPE_ICON } from "@/lib/icons";
+import { PIN_CHIP } from "@/lib/icons";
 import type { Artist } from "@/lib/types";
 import AppHeader, { matches } from "./AppHeader";
 import { WorkCard } from "./cards";
 import styles from "./app.module.css";
 
-// The Art tab ("Exploring"): every published work, newest first, filtered by
-// the artist's main art type.
+// The Art tab: every published work, newest first, filtered by the city the
+// artist is based in.
 export default function ExploreScreen({ artists }: { artists: Artist[] }) {
-  const [type, setType] = useState<ArtType | null>(null);
+  const [city, setCity] = useState<string | null>(null);
+  const [swapped, setSwapped] = useState(false); // a filter was picked, so the cards animate in
+  const pick = (c: string | null) => {
+    setCity(c);
+    setSwapped(true);
+  };
   const [query, setQuery] = useState("");
 
   const all = useMemo(
     () =>
       artists
-        .flatMap((artist) => artist.works.map((work) => ({ artist, work, type: artTypeOf(artist.artType) })))
+        .flatMap((artist) => artist.works.map((work) => ({ artist, work })))
         .sort((a, b) => b.work.createdAt.localeCompare(a.work.createdAt)),
     [artists]
   );
-  const types = ART_TYPES.filter((t) => all.some((x) => x.type === t));
+  // Cities with the most works first, so the common ones sit at the left of the row.
+  const cities = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const x of all) if (x.artist.based) count.set(x.artist.based, (count.get(x.artist.based) ?? 0) + 1);
+    return [...count].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([city]) => city);
+  }, [all]);
   const shown = all.filter(
-    (x) => (!type || x.type === type) && matches(query, x.work.title, x.work.medium, x.artist.name, x.artist.slug, x.artist.artType)
+    (x) => (!city || x.artist.based === city) && matches(query, x.work.title, x.work.medium, x.artist.name, x.artist.slug, x.artist.artType)
   );
 
   return (
     <>
       <AppHeader query={query} onQuery={setQuery} placeholder="Search works and artists" />
-      {types.length > 1 && (
-        <div className={styles.chips} role="group" aria-label="Art type">
-          <button className={`${styles.chip} ${type === null ? styles.chipOn : ""}`} onClick={() => setType(null)} aria-pressed={type === null} type="button">
-            {ALL_CHIP} All
+      {cities.length > 1 && (
+        <div className={styles.chips} role="group" aria-label="City">
+          <button className={`${styles.chip} ${city === null ? styles.chipOn : ""}`} onClick={() => pick(null)} aria-pressed={city === null} type="button">
+            {PIN_CHIP} All cities
           </button>
-          {types.map((t) => (
-            <button key={t} className={`${styles.chip} ${type === t ? styles.chipOn : ""}`} onClick={() => setType(t)} aria-pressed={type === t} type="button">
-              {ART_TYPE_ICON[t]} {t}
+          {cities.map((c) => (
+            <button key={c} className={`${styles.chip} ${city === c ? styles.chipOn : ""}`} onClick={() => pick(c)} aria-pressed={city === c} type="button">
+              {PIN_CHIP} {c}
             </button>
           ))}
         </div>
       )}
 
       {shown.length > 0 ? (
-        <div className={styles.grid}>
+        <div key={city ?? "all"} className={`${styles.grid} ${swapped ? styles.gridSwap : ""}`}>
           {shown.map(({ artist, work }) => (
             <WorkCard key={work.dbId} artist={artist} work={work} />
           ))}

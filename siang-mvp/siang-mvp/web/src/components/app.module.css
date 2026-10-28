@@ -1,6 +1,6 @@
 /* The app shell and the cards shared by the three tabs (Draft-1 design):
-   a phone-width column, the logo bar, a row of filter chips, and the white
-   pill tab bar floating at the bottom. */
+   a phone-width column, the logo bar, a row of filter chips, and the dark
+   glass tab bar floating at the bottom. */
 
 .app {
   min-height: 100vh;
@@ -79,17 +79,39 @@
 }
 
 /* ── Search ─────────────────────────────────────────────── */
+/* The search box opens by growing out of the header: its row eases from zero
+   height to full while it fades and settles into place. */
+.searchWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 320ms var(--ease), opacity 220ms ease-out;
+}
+.searchWrapOpen {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.searchClip {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 var(--gutter);
+}
 .search {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 12px var(--gutter) 0;
+  margin: 12px 0 0;
+  transform: translateY(-8px);
+  transition: transform 320ms var(--ease);
   height: 46px;
   padding: 0 6px 0 16px;
   border-radius: 999px;
   background: var(--surface);
   border: 1px solid var(--line);
   color: var(--fg-soft);
+}
+.searchWrapOpen .search {
+  transform: none;
 }
 .search input {
   flex: 1;
@@ -154,6 +176,22 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 14px 10px 0;
+}
+/* After a filter is picked, the new set of cards eases in rather than snapping. */
+.gridSwap > * {
+  animation: grid-in 360ms var(--ease) both;
+}
+.gridSwap > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.gridSwap > *:nth-child(n + 3) {
+  animation-delay: 80ms;
+}
+@keyframes grid-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 .card {
   position: relative;
@@ -525,43 +563,53 @@
 }
 
 /* ── Tab bar ────────────────────────────────────────────── */
+/* Dark glass pill: the artwork behind it shows through, blurred. */
 .tabbar {
   position: fixed;
   z-index: 40;
   left: 50%;
   bottom: calc(18px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
-  width: min(340px, calc(100% - 44px));
-  height: 78px;
-  padding: 0 22px;
+  width: min(calc(var(--column) - 32px), calc(100% - 32px));
+  height: 76px;
+  padding: 0 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-radius: 999px;
-  background: var(--paper);
-  color: var(--on-paper);
-  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.7);
+  background: rgba(24, 24, 24, 0.55);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  backdrop-filter: blur(22px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 .tab {
-  width: 62px;
-  height: 58px;
+  flex: 1;
+  max-width: 76px;
+  height: 60px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  border-radius: 10px;
-  font-size: 9.5px;
-  font-weight: 600;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
+  color: #fff;
   transition: background 200ms var(--ease), transform var(--press-dur) var(--ease);
+}
+.tab svg {
+  width: 24px;
+  height: 24px;
 }
 .tab:active {
   transform: var(--press);
 }
 .tabOn {
-  background: var(--paper-press);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Small phones (iPhone SE, mini): keep a five-chip row on one screen. */

@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { OFFICIAL_SLUG } from "./beta";
 import type { Artist, ArtistLink, Availability, Contact, Show, Work } from "./types";
 
 type WorkRow = {
@@ -114,10 +113,11 @@ const artistSelect = (level: Level) => `
 `;
 
 // Everyone on Siang: the artists who signed up and built their page in the
-// Studio, and Siang's own page. A row no account owns is not listed otherwise.
+// Studio, and the pages the team made for them (Siang's own, the booth demo
+// artists). Those have no account, so nothing here filters on one.
 export async function fetchArtists(supabase: SupabaseClient): Promise<Artist[]> {
   const rows = await withFallback<Row[]>((level) =>
-    supabase.from("artists").select(artistSelect(level)).or(`user_id.not.is.null,slug.eq.${OFFICIAL_SLUG}`).order("name")
+    supabase.from("artists").select(artistSelect(level)).order("name")
   );
   return (rows ?? []).filter((row) => !row.hidden).map(rowToArtist);
 }

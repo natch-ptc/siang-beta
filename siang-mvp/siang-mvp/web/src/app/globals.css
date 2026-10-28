@@ -101,29 +101,29 @@ button {
   pointer-events: none;
 }
 ::view-transition-old(.page-fade) {
-  animation: 120ms ease-in both vt-fade reverse;
+  animation: 160ms ease-in both vt-fade reverse;
 }
 ::view-transition-new(.page-fade) {
-  animation: 200ms ease-out 60ms both vt-fade, 320ms var(--ease) both vt-rise;
+  animation: 280ms ease-out both vt-fade, 380ms var(--ease) both vt-rise;
 }
 ::view-transition-old(.nav-forward) {
-  --vt-offset: -48px;
-  animation: 140ms ease-in both vt-fade reverse, 360ms var(--ease) both vt-slide reverse;
+  --vt-offset: -40px;
+  animation: 180ms ease-in both vt-fade reverse, 420ms var(--ease) both vt-slide reverse;
 }
 ::view-transition-new(.nav-forward) {
-  --vt-offset: 48px;
-  animation: 200ms ease-out 120ms both vt-fade, 360ms var(--ease) both vt-slide;
+  --vt-offset: 40px;
+  animation: 260ms ease-out 40ms both vt-fade, 420ms var(--ease) both vt-slide;
 }
 ::view-transition-old(.nav-back) {
-  --vt-offset: 48px;
-  animation: 140ms ease-in both vt-fade reverse, 360ms var(--ease) both vt-slide reverse;
+  --vt-offset: 40px;
+  animation: 180ms ease-in both vt-fade reverse, 420ms var(--ease) both vt-slide reverse;
 }
 ::view-transition-new(.nav-back) {
-  --vt-offset: -48px;
-  animation: 200ms ease-out 120ms both vt-fade, 360ms var(--ease) both vt-slide;
+  --vt-offset: -40px;
+  animation: 260ms ease-out 40ms both vt-fade, 420ms var(--ease) both vt-slide;
 }
 ::view-transition-group(.morph) {
-  animation-duration: 380ms;
+  animation-duration: 460ms;
   animation-timing-function: var(--ease);
 }
 ::view-transition-image-pair(.morph) {
@@ -146,7 +146,7 @@ button {
 }
 @keyframes vt-rise {
   from {
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
 }
 @keyframes vt-slide {

@@ -110,11 +110,7 @@ export async function drawLabel(info: ShareInfo, qr: HTMLCanvasElement): Promise
   ctx.translate(W - PAD - MARK_W * scale, QR_Y + QR - markH);
   ctx.scale(scale, scale);
   ctx.fillStyle = INK;
-  const d = new Path2D(MARK_D);
-  for (let i = 0; i < 3; i++) {
-    ctx.fill(d);
-    ctx.translate(MARK_W / 3, 0);
-  }
+  ctx.fill(new Path2D(MARK_D));
   ctx.restore();
 
   return canvas;

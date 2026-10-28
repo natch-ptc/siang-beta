@@ -72,7 +72,7 @@ export default function PaperLanding() {
     <div className={`siang ${styles.page}`}>
       <div className={styles.app}>
         <header className={styles.topbar}>
-          <Image src="/siang-logo.png" alt="Siang" width={1899} height={429} className={styles.logo} priority />
+          <Image src="/siang-logo.png" alt="Siang" width={1899} height={394} className={styles.logo} priority />
         </header>
 
         <main className={styles.stage} ref={stageRef}>

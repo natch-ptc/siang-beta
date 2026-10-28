@@ -86,7 +86,7 @@ export default function CodePad({ wrong }: { wrong?: string }) {
   }, [press, scanning]);
 
   return (
-    <main className={`${app.app} ${app.appBare}`}>
+    <main className={app.app}>
       <header className={app.top}>
         <Link href="/" className={app.logoLink}>
           <Logo height={30} />

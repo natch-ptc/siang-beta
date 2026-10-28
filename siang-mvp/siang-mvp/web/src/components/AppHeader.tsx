@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { CLOSE_ICON, SCAN_ICON, SEARCH_ICON } from "@/lib/icons";
+import { CLOSE_ICON, SEARCH_ICON } from "@/lib/icons";
 import Logo from "./Logo";
 import styles from "./app.module.css";
 
-// The bar at the top of each tab: the logo, search (it filters the list on
-// the tab) and the scan button that sits on every tab (PRD 6.1).
+// The bar at the top of each tab: the logo and search (it filters the list on
+// the tab). Scanning has its own tab.
 export default function AppHeader({
   query,
   onQuery,
@@ -18,9 +18,16 @@ export default function AppHeader({
   placeholder: string;
 }) {
   const [open, setOpen] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
 
   function toggle() {
-    if (open) onQuery("");
+    if (open) {
+      onQuery("");
+      input.current?.blur();
+    } else {
+      // Focus inside the tap, so the keyboard comes up with the box on iOS.
+      input.current?.focus({ preventScroll: true });
+    }
     setOpen(!open);
   }
 
@@ -31,28 +38,29 @@ export default function AppHeader({
           <Logo height={30} />
         </Link>
         <div className={styles.topActs}>
-          <Link href="/w" className={styles.iconBtn} aria-label="Scan a code or type a work code">
-            {SCAN_ICON}
-          </Link>
           <button className={styles.iconBtn} onClick={toggle} aria-label={open ? "Close search" : "Search"} aria-expanded={open} type="button">
             {open ? CLOSE_ICON : SEARCH_ICON}
           </button>
         </div>
       </header>
-      {open && (
-        <label className={styles.search}>
-          {SEARCH_ICON}
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => onQuery(e.target.value)}
-            placeholder={placeholder}
-            aria-label={placeholder}
-            autoFocus
-            enterKeyHint="search"
-          />
-        </label>
-      )}
+      {/* Always in the page, so it can open and close smoothly rather than appear. */}
+      <div className={`${styles.searchWrap} ${open ? styles.searchWrapOpen : ""}`} aria-hidden={!open}>
+        <div className={styles.searchClip}>
+          <label className={styles.search}>
+            {SEARCH_ICON}
+            <input
+              ref={input}
+              type="search"
+              value={query}
+              onChange={(e) => onQuery(e.target.value)}
+              placeholder={placeholder}
+              aria-label={placeholder}
+              tabIndex={open ? 0 : -1}
+              enterKeyHint="search"
+            />
+          </label>
+        </div>
+      </div>
     </>
   );
 }

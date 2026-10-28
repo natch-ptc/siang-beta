@@ -110,10 +110,11 @@ export const DOWN_ICON = <CaretDown size={14} weight="bold" />;
 export const EYE_SLASH_ICON = <EyeSlash size={18} weight="regular" />;
 
 // The tab bar, and the same glyphs at chip size for the tabs on a profile.
-export const NAV_ART = <PaintBrushBroad size={26} weight="bold" />;
-export const NAV_SHOWS = <CalendarDots size={26} weight="bold" />;
-export const NAV_ARTISTS = <Palette size={26} weight="bold" />;
-export const NAV_PROFILE = <User size={26} weight="bold" />;
+export const NAV_ART = <PaintBrushBroad size={26} weight="regular" />;
+export const NAV_ARTISTS = <Palette size={26} weight="regular" />;
+export const NAV_SCAN = <Scan size={26} weight="regular" />;
+export const NAV_PLACE = <MapPin size={26} weight="regular" />;
+export const NAV_PROFILE = <User size={26} weight="regular" />;
 
 export const ART_CHIP = <PaintBrushBroad size={17} weight="bold" />;
 export const SHOWS_CHIP = <CalendarDots size={17} weight="bold" />;
