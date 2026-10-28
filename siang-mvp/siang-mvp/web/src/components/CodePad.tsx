@@ -7,6 +7,7 @@ import jsQR from "jsqr";
 import { CLOSE_ICON, HASH_ICON } from "@/lib/icons";
 import { formatCode } from "@/lib/share";
 import Logo from "./Logo";
+import ScanPreview, { lookupPreview, type Preview } from "./ScanPreview";
 import Spinner from "./Spinner";
 import app from "./app.module.css";
 import sheet from "./Sheet.module.css";
@@ -38,6 +39,10 @@ export default function CodePad({ wrong }: { wrong?: string }) {
   const [message, setMessage] = useState(wrong ? `No work has the code ${formatCode(wrong)}. Check the label and try again.` : "");
   const [keypad, setKeypad] = useState(Boolean(wrong));
   const [cameraFailed, setCameraFailed] = useState(false);
+  const [scanned, setScanned] = useState<{ path: string; preview: Preview | null } | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const busy = useRef(false); // a code was read and its card is up
+  const ignored = useRef<string | null>(null); // the code the visitor just closed, still in view
 
   const open = useCallback(
     (code: string) => {
@@ -64,13 +69,42 @@ export default function CodePad({ wrong }: { wrong?: string }) {
 
   const onCameraFailed = useCallback(() => setCameraFailed(true), []);
 
-  const onScanned = useCallback(
+  // Opening a scanned page: this screen fades out first, then the page fades in.
+  const go = useCallback(
     (path: string) => {
-      setOpening(true);
-      router.push(path);
+      setLeaving(true);
+      setTimeout(() => router.push(path), 280);
     },
     [router],
   );
+
+  // A QR was read: show who or what it is, and open it when the card is tapped.
+  const onScanned = useCallback(
+    (path: string) => {
+      if (busy.current || ignored.current === path) return;
+      busy.current = true;
+      navigator.vibrate?.(12);
+      setScanned({ path, preview: null });
+      lookupPreview(path).then((preview) => {
+        if (preview) setScanned((s) => (s?.path === path ? { path, preview } : s));
+        else go(path); // nothing to preview: just open it
+      });
+    },
+    [go],
+  );
+
+  // Back to scanning. The code still in view is ignored until the camera sees another one, or a few seconds pass.
+  const dismiss = useCallback(() => {
+    if (scanned) {
+      const path = scanned.path;
+      ignored.current = path;
+      setTimeout(() => {
+        if (ignored.current === path) ignored.current = null;
+      }, 4000);
+    }
+    busy.current = false;
+    setScanned(null);
+  }, [scanned]);
 
   // Short numbers are show numbers, which only mean something inside a show (PRD 10).
   function submit() {
@@ -92,8 +126,8 @@ export default function CodePad({ wrong }: { wrong?: string }) {
 
   return (
     <>
-      <main className={styles.scanPage}>
-        <QrCamera paused={keypad || opening} onFound={onScanned} onFailed={onCameraFailed} />
+      <main className={`${styles.scanPage} ${leaving ? styles.scanLeaving : ""}`}>
+        <QrCamera paused={keypad || opening || scanned !== null} onFound={onScanned} onFailed={onCameraFailed} />
 
         <header className={styles.scanTop}>
           <Link href="/" className={app.logoLink}>
@@ -105,15 +139,19 @@ export default function CodePad({ wrong }: { wrong?: string }) {
           </button>
         </header>
 
-        <p className={styles.scanHint} role="status">
-          {opening ? (
-            <Spinner size={18} label="Opening" />
-          ) : cameraFailed ? (
-            "The camera isn't available. Enter the number from the label instead."
-          ) : (
-            "Point the camera at a Siang QR code."
-          )}
-        </p>
+        {scanned ? (
+          <ScanPreview preview={scanned.preview} onOpen={() => go(scanned.path)} onDismiss={dismiss} />
+        ) : (
+          <p className={styles.scanHint} role="status">
+            {opening ? (
+              <Spinner size={18} label="Opening" />
+            ) : cameraFailed ? (
+              "The camera isn't available. Enter the number from the label instead."
+            ) : (
+              "Point the camera at a Siang QR code."
+            )}
+          </p>
+        )}
       </main>
 
       {/* Outside the page layer, so it sits above the tab bar. */}
@@ -191,11 +229,7 @@ function QrCamera({ onFound, onFailed, paused }: { onFound: (path: string) => vo
         ctx.drawImage(video, 0, 0);
         const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const path = siangPath(jsQR(frame.data, frame.width, frame.height)?.data ?? "");
-        if (path) {
-          navigator.vibrate?.(12);
-          onFound(path);
-          return;
-        }
+        if (path) onFound(path); // the loop keeps running, so scanning resumes if the card is closed
       }
       raf = requestAnimationFrame(tick);
     }

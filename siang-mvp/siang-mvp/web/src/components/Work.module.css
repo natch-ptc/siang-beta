@@ -448,6 +448,13 @@
   z-index: 30;
   background: #000;
 }
+/* Opening a scanned page: the whole screen fades out before the next page fades in. */
+.scanPage {
+  transition: opacity 280ms ease-in;
+}
+.scanLeaving {
+  opacity: 0;
+}
 .camera {
   position: absolute;
   inset: 0;
