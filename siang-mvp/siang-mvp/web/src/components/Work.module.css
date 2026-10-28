@@ -404,7 +404,7 @@
   box-shadow: inset 0 0 0 1.5px var(--fg);
 }
 .padMsg {
-  min-height: 42px;
+  min-height: 34px;
   margin-top: 14px;
   font-size: 14px;
   line-height: 1.45;
@@ -440,28 +440,114 @@
   margin-top: 22px;
 }
 
-.camera {
+/* The Scan tab: the camera fills the page, the logo and the "Enter number"
+   button sit over it at the top, and the tab bar floats over the bottom. */
+.scanPage {
   position: fixed;
   inset: 0;
-  z-index: 70;
-  display: flex;
-  flex-direction: column;
+  z-index: 30;
+  background: #000;
+}
+.camera {
+  position: absolute;
+  inset: 0;
   background: #000;
 }
 .camera video {
-  flex: 1;
-  min-height: 0;
   width: 100%;
+  height: 100%;
   object-fit: cover;
 }
-.cameraBar {
+.scanTop {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  width: 100%;
+  max-width: var(--column);
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(18px + env(safe-area-inset-top)) var(--gutter) 28px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
+}
+.numBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px 0 12px;
+  border-radius: 999px;
+  background: rgba(30, 30, 30, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: transform var(--press-dur) var(--ease), background var(--press-dur) var(--ease);
+}
+.numBtn:active {
+  transform: var(--press);
+  background: rgba(60, 60, 60, 0.6);
+}
+.scanHint {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(18px + 76px + 20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 44px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  color: #fff;
+}
+/* The keypad is a sheet over the camera, above the tab bar. */
+.padSheet {
+  text-align: center;
+}
+.padSheet .digit,
+.padSheet .key {
+  background: var(--surface-hi);
+}
+.padSheet .keyQuiet {
+  background: none;
+}
+.padSheet .keyGo {
+  background: #fff;
+}
+.padHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px var(--gutter) calc(18px + env(safe-area-inset-bottom));
-  font-size: 14.5px;
-  color: var(--fg-soft);
+}
+.padHead .padTitle {
+  flex: 1;
+  padding-left: var(--hit);
+}
+.keyText {
+  font-size: 16px;
+  font-weight: 500;
+}
+.keyGo {
+  background: #fff;
+  color: #0d0d0d;
+  font-size: 18px;
+  font-weight: 600;
+}
+.keyGo:active {
+  background: var(--paper-press);
+}
+.keyGo:disabled {
+  opacity: 0.4;
 }
 .frame {
   position: absolute;

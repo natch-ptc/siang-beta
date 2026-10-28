@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import jsQR from "jsqr";
-import { BACKSPACE_ICON, CLOSE_ICON, SCAN_ICON } from "@/lib/icons";
+import { CLOSE_ICON, HASH_ICON } from "@/lib/icons";
 import { formatCode } from "@/lib/share";
 import Logo from "./Logo";
 import Spinner from "./Spinner";
 import app from "./app.module.css";
+import sheet from "./Sheet.module.css";
 import styles from "./Work.module.css";
 
 const CODE_LENGTH = 6;
@@ -26,21 +27,24 @@ function siangPath(text: string): string | null {
   }
 }
 
-// siang.co/w: type the six-digit code printed on a work's label, or scan its
-// QR. `wrong` is a code that was just tried and belongs to no work.
+// siang.co/w, the Scan tab: the camera reads a Siang QR code, and a button at
+// the top right opens the keypad for the six-digit code printed on a work's
+// label. `wrong` is a code that was just tried and belongs to no work, so the
+// keypad opens with that message.
 export default function CodePad({ wrong }: { wrong?: string }) {
   const router = useRouter();
   const [digits, setDigits] = useState("");
   const [opening, setOpening] = useState(false);
   const [message, setMessage] = useState(wrong ? `No work has the code ${formatCode(wrong)}. Check the label and try again.` : "");
-  const [scanning, setScanning] = useState(false);
+  const [keypad, setKeypad] = useState(Boolean(wrong));
+  const [cameraFailed, setCameraFailed] = useState(false);
 
   const open = useCallback(
     (code: string) => {
       setOpening(true);
       router.push(`/w/${code}`);
     },
-    [router]
+    [router],
   );
 
   const press = useCallback(
@@ -55,16 +59,17 @@ export default function CodePad({ wrong }: { wrong?: string }) {
         if (next.length === CODE_LENGTH) open(next);
       }
     },
-    [digits, open, opening]
+    [digits, open, opening],
   );
+
+  const onCameraFailed = useCallback(() => setCameraFailed(true), []);
 
   const onScanned = useCallback(
     (path: string) => {
-      setScanning(false);
       setOpening(true);
       router.push(path);
     },
-    [router]
+    [router],
   );
 
   // Short numbers are show numbers, which only mean something inside a show (PRD 10).
@@ -76,74 +81,98 @@ export default function CodePad({ wrong }: { wrong?: string }) {
 
   // A desktop keyboard works too.
   useEffect(() => {
-    if (scanning) return;
+    if (!keypad) return;
     const onKey = (e: KeyboardEvent) => {
       if (/^\d$/.test(e.key)) press(e.key);
       else if (e.key === "Backspace") press("back");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [press, scanning]);
+  }, [press, keypad]);
 
   return (
-    <main className={app.app}>
-      <header className={app.top}>
-        <Link href="/" className={app.logoLink}>
-          <Logo height={30} />
-        </Link>
-        <Link href="/" className={app.iconBtn} aria-label="Close">
-          {CLOSE_ICON}
-        </Link>
-      </header>
+    <>
+      <main className={styles.scanPage}>
+        <QrCamera paused={keypad || opening} onFound={onScanned} onFailed={onCameraFailed} />
 
-      <div className={styles.pad}>
-        <h1 className={styles.padTitle}>Type the work code</h1>
-        <p className={styles.padLead}>The six digits printed on the label beside the work.</p>
+        <header className={styles.scanTop}>
+          <Link href="/" className={app.logoLink}>
+            <Logo height={30} />
+          </Link>
+          <button className={styles.numBtn} onClick={() => setKeypad(true)} aria-label="Type a work code" type="button">
+            {HASH_ICON}
+            <span>Enter number</span>
+          </button>
+        </header>
 
-        <div className={styles.digits} aria-label={`Code so far: ${digits || "empty"}`} role="status">
-          {Array.from({ length: CODE_LENGTH }, (_, i) => (
-            <span key={i} className={`${styles.digit} ${i === digits.length && !opening ? styles.digitNext : ""}`}>
-              {digits[i] ?? ""}
-            </span>
-          ))}
-        </div>
-        <p className={styles.padMsg} role="alert">
-          {opening ? <Spinner size={18} label="Opening the work" /> : message}
+        <p className={styles.scanHint} role="status">
+          {opening ? (
+            <Spinner size={18} label="Opening" />
+          ) : cameraFailed ? (
+            "The camera isn't available. Enter the number from the label instead."
+          ) : (
+            "Point the camera at a Siang QR code."
+          )}
         </p>
+      </main>
 
-        <div className={styles.keys}>
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
-            <button key={k} className={styles.key} onClick={() => press(k)} type="button">
-              {k}
-            </button>
-          ))}
-          <button className={`${styles.key} ${styles.keyQuiet}`} onClick={() => setScanning(true)} aria-label="Scan a QR code" type="button">
-            {SCAN_ICON}
-          </button>
-          <button className={styles.key} onClick={() => press("0")} type="button">
-            0
-          </button>
-          <button className={`${styles.key} ${styles.keyQuiet}`} onClick={() => press("back")} aria-label="Delete the last digit" type="button">
-            {BACKSPACE_ICON}
-          </button>
-        </div>
+      {/* Outside the page layer, so it sits above the tab bar. */}
+      {keypad && (
+        <>
+          <div className={sheet.scrim} onClick={() => setKeypad(false)} />
+          <div className={`${sheet.sheet} ${styles.padSheet}`} role="dialog" aria-modal="true" aria-label="Type the work code">
+            <div className={sheet.handle} />
+            <div className={styles.padHead}>
+              <h1 className={styles.padTitle}>Type the work code</h1>
+              <button className={app.iconBtn} onClick={() => setKeypad(false)} aria-label="Close" type="button">
+                {CLOSE_ICON}
+              </button>
+            </div>
+            <p className={styles.padLead}>The six digits printed on the label beside the work.</p>
 
-        <div className={styles.padActs}>
-          <button className={app.btn} onClick={submit} disabled={opening || digits.length === 0} type="button">
-            Open the work
-          </button>
-        </div>
-      </div>
+            <div className={styles.digits} aria-label={`Code so far: ${digits || "empty"}`} role="status">
+              {Array.from({ length: CODE_LENGTH }, (_, i) => (
+                <span key={i} className={`${styles.digit} ${i === digits.length && !opening ? styles.digitNext : ""}`}>
+                  {digits[i] ?? ""}
+                </span>
+              ))}
+            </div>
+            <p className={styles.padMsg} role="alert">
+              {opening ? <Spinner size={18} label="Opening the work" /> : message}
+            </p>
 
-      {scanning && <QrCamera onClose={() => setScanning(false)} onFound={onScanned} />}
-    </main>
+            <div className={styles.keys}>
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
+                <button key={k} className={styles.key} onClick={() => press(k)} type="button">
+                  {k}
+                </button>
+              ))}
+              <button className={`${styles.key} ${styles.keyQuiet} ${styles.keyText}`} onClick={() => press("back")} type="button">
+                Delete
+              </button>
+              <button className={styles.key} onClick={() => press("0")} type="button">
+                0
+              </button>
+              <button className={`${styles.key} ${styles.keyGo}`} onClick={submit} disabled={opening || digits.length === 0} type="button">
+                Go
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
 // The camera, reading QR codes until it sees one that leads into Siang.
-function QrCamera({ onFound, onClose }: { onFound: (path: string) => void; onClose: () => void }) {
+function QrCamera({ onFound, onFailed, paused }: { onFound: (path: string) => void; onFailed: () => void; paused: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
+  // Read inside the frame loop, so the camera keeps running while the keypad is up but reads nothing.
+  const pausedRef = useRef(paused);
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     let stopped = false;
@@ -154,7 +183,7 @@ function QrCamera({ onFound, onClose }: { onFound: (path: string) => void; onClo
     function tick() {
       const video = videoRef.current;
       if (stopped || !video) return;
-      if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
+      if (!pausedRef.current && video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
         canvas.width = video.videoWidth;
@@ -173,7 +202,10 @@ function QrCamera({ onFound, onClose }: { onFound: (path: string) => void; onClo
 
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
         if (stopped) return stream.getTracks().forEach((t) => t.stop());
         const video = videoRef.current;
         if (!video) return;
@@ -181,7 +213,10 @@ function QrCamera({ onFound, onClose }: { onFound: (path: string) => void; onClo
         await video.play();
         tick();
       } catch {
-        if (!stopped) setFailed(true);
+        if (!stopped) {
+          setFailed(true);
+          onFailed();
+        }
       }
     })();
 
@@ -190,18 +225,12 @@ function QrCamera({ onFound, onClose }: { onFound: (path: string) => void; onClo
       cancelAnimationFrame(raf);
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [onFound]);
+  }, [onFound, onFailed]);
 
   return (
-    <div className={styles.camera} role="dialog" aria-modal="true" aria-label="Scan a QR code">
+    <div className={styles.camera}>
       <video ref={videoRef} playsInline muted />
       {!failed && <div className={styles.frame} />}
-      <div className={styles.cameraBar}>
-        <span>{failed ? "The camera isn't available. Type the code instead." : "Point the camera at a Siang QR code."}</span>
-        <button className={app.btnGhost} onClick={onClose} type="button">
-          Close
-        </button>
-      </div>
     </div>
   );
 }

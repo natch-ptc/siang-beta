@@ -3,6 +3,7 @@
 // per-artist card glyphs in marks.ts) and generated artwork line-art
 // (artwork-art.ts) are deliberately NOT icons — those stay bespoke.
 import {
+  Hash,
   MapPin,
   CaretRight,
   CaretLeft,
@@ -162,6 +163,7 @@ export const DOWNLOAD_BOLD = <DownloadSimple size={17} weight="bold" />;
 export const QR_SCAN_ICON = <Scan size={17} weight="bold" />;
 export const PLAY_XL = <Play size={28} weight="fill" />;
 export const PAUSE_XL = <Pause size={28} weight="fill" />;
+export const HASH_ICON = <Hash size={20} weight="bold" />;
 export const BACKSPACE_ICON = <Backspace size={24} weight="regular" />;
 
 // Instagram and LINE use their own logos (Simple Icons, simpleicons.org);
