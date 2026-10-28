@@ -135,7 +135,7 @@ export default async function WorkPage({ params }: Props) {
           {isOfficial(artist.slug) && <span className={app.exampleTag}>Example</span>}
           {work.title}
         </h1>
-        {work.titleEn && <p className={styles.sub}>{work.titleEn}</p>}
+        {work.titleEn && work.titleEn !== work.title && <p className={styles.sub}>{work.titleEn}</p>}
         {work.coverUrl ? (
           <Morph name={`work-${work.dbId}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
