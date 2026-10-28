@@ -1,5 +1,7 @@
 // The Siang mark: a rounded bar and a dot, traced from the supplied logo file.
-export const MARK_D = "M595.5 0.0C548.2 0.0 505.1 18.3 473.0 48.1L473.0 48.1C422.0 90.7 341.1 77.3 303.5 48.9C271.3 18.6 227.9 0.0 180.2 0.0C80.7 0.0 0.0 80.7 0.0 180.2C0.0 279.7 80.7 360.3 180.2 360.3C231.9 360.3 278.6 338.5 311.4 303.5C387.4 251.9 439.8 281.9 461.6 300.7C465.2 304.7 469.0 308.5 473.0 312.2C473.0 312.2 473.0 312.2 473.0 312.2L473.0 312.2C505.1 342.1 548.2 360.3 595.5 360.3C695.0 360.3 775.7 279.7 775.7 180.2C775.7 80.7 695.0 0.0 595.5 0.0ZM1025.0 18.1C935.5 18.1 863.0 90.7 863.0 180.2C863.0 269.7 935.5 342.2 1025.0 342.2C1114.5 342.2 1187.1 269.7 1187.1 180.2C1187.1 90.7 1114.5 18.1 1025.0 18.1Z";
+const MARK_BLOB_D = "M595.5 0.0C548.2 0.0 505.1 18.3 473.0 48.1L473.0 48.1C422.0 90.7 341.1 77.3 303.5 48.9C271.3 18.6 227.9 0.0 180.2 0.0C80.7 0.0 0.0 80.7 0.0 180.2C0.0 279.7 80.7 360.3 180.2 360.3C231.9 360.3 278.6 338.5 311.4 303.5C387.4 251.9 439.8 281.9 461.6 300.7C465.2 304.7 469.0 308.5 473.0 312.2C473.0 312.2 473.0 312.2 473.0 312.2L473.0 312.2C505.1 342.1 548.2 360.3 595.5 360.3C695.0 360.3 775.7 279.7 775.7 180.2C775.7 80.7 695.0 0.0 595.5 0.0Z";
+const MARK_DOT_D = "M1025.0 18.1C935.5 18.1 863.0 90.7 863.0 180.2C863.0 269.7 935.5 342.2 1025.0 342.2C1114.5 342.2 1187.1 269.7 1187.1 180.2C1187.1 90.7 1114.5 18.1 1025.0 18.1Z";
+export const MARK_D = MARK_BLOB_D + MARK_DOT_D;
 export const MARK_W = 1187.05;
 export const MARK_H = 360.33;
 
@@ -30,8 +32,11 @@ export function Mark({ height = 24, className }: { height?: number; className?: 
   );
 }
 
+// The classes the opening animation hangs on the three parts of the logo.
+type Parts = { blob?: string; dot?: string; word?: string };
+
 // The mark with the "Siang" wordmark beside it. `height` is the mark's height.
-export default function Logo({ height = 30 }: { height?: number }) {
+export default function Logo({ height = 30, parts }: { height?: number; parts?: Parts }) {
   const unit = height / MARK_H;
   const boxH = LOCK_H * unit;
   return (
@@ -42,10 +47,15 @@ export default function Logo({ height = 30 }: { height?: number }) {
       fill="currentColor"
       role="img"
       aria-label="Siang"
-      style={{ display: "block", flex: "none", marginBlock: (height - boxH) / 2 }}
+      style={{ display: "block", flex: "none", marginBlock: (height - boxH) / 2, overflow: "visible" }}
     >
-      <path transform={`translate(0 ${MARK_Y})`} d={MARK_D} />
-      <path transform={`translate(${MARK_W + LOCK_GAP} ${WORD_Y})`} d={WORD_D} />
+      <g transform={`translate(0 ${MARK_Y})`}>
+        <path className={parts?.blob} d={MARK_BLOB_D} />
+        <path className={parts?.dot} d={MARK_DOT_D} />
+      </g>
+      <g transform={`translate(${MARK_W + LOCK_GAP} ${WORD_Y})`}>
+        <path className={parts?.word} d={WORD_D} />
+      </g>
     </svg>
   );
 }

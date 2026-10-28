@@ -70,12 +70,12 @@ export function OnboardingFrame({
   );
 }
 
-// The first thing at /join: the mark fades up on its own, holds a moment, then
-// gives way to the intro. A tap skips the wait.
+// The first thing at /join and when siang.co opens: the logo draws itself in
+// (bar, dot, then the name), holds a moment, then gives way. A tap skips the wait.
 export function Splash({ onDone }: { onDone: () => void }) {
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
-    const hold = setTimeout(() => setLeaving(true), 1700);
+    const hold = setTimeout(() => setLeaving(true), 2500);
     return () => clearTimeout(hold);
   }, []);
   useEffect(() => {
@@ -87,7 +87,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
     <button className={`${m.splash} ${leaving ? m.leaving : ""}`} onClick={() => setLeaving(true)} aria-label="Siang. Tap to continue" type="button">
       <span className={m.splashInner}>
         <span className={m.splashMark}>
-          <Logo height={34} />
+          <Logo height={40} parts={{ blob: m.sBlob, dot: m.sDot, word: m.sWord }} />
         </span>
         <span className={m.splashLine} lang="th">
           ศิลปะฟังได้
